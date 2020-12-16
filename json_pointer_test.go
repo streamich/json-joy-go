@@ -126,42 +126,42 @@ func Test_JSONPointer_Format_EncodesSpecialChars(t *testing.T) {
 	assert.Equal(t, str, "/foo~1bar/~1/~0/a~0b~1")
 }
 
-func Test_JSONPointer_Find_ReturnsRootDocument(t *testing.T) {
+func Test_JSONPointer_Get_ReturnsRootDocument(t *testing.T) {
 	tokens := JSONPointer{}
 	b := []byte(`{"foo": "bar"}`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
-	value, err := tokens.Find(doc)
+	value, err := tokens.Get(doc)
 	assert.Nil(t, err)
 	assert.Equal(t, value, doc)
 }
 
-func Test_JSONPointer_Find_ReturnsAFirstLevelKey(t *testing.T) {
+func Test_JSONPointer_Get_ReturnsAFirstLevelKey(t *testing.T) {
 	tokens := JSONPointer{"foo"}
 	b := []byte(`{"foo": "bar"}`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
-	value, err := tokens.Find(doc)
+	value, err := tokens.Get(doc)
 	assert.Nil(t, err)
 	assert.Equal(t, "bar", value)
 }
 
-func Test_JSONPointer_Find_FindsADeepStringKeyInObjects(t *testing.T) {
+func Test_JSONPointer_Get_FindsADeepStringKeyInObjects(t *testing.T) {
 	tokens := JSONPointer{"foo", "bar", "baz"}
 	b := []byte(`{"foo": {"bar": {"baz": "qux"}}}`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
-	value, err := tokens.Find(doc)
+	value, err := tokens.Get(doc)
 	assert.Nil(t, err)
 	assert.Equal(t, "qux", value)
 }
 
-func Test_JSONPointer_Find_ReturnsErrorNotFoundWhenLocatingMissingValue(t *testing.T) {
+func Test_JSONPointer_Get_ReturnsErrorNotFoundWhenLocatingMissingValue(t *testing.T) {
 	tokens := JSONPointer{"foo2"}
 	b := []byte(`{"foo": {"bar": {"baz": "qux"}}}`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
-	value, err := tokens.Find(doc)
+	value, err := tokens.Get(doc)
 	assert.NotNil(t, err)
 	assert.Equal(t, ErrNotFound, err)
 	assert.Nil(t, value)

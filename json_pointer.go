@@ -16,9 +16,11 @@ const (
 )
 
 const (
-	rootPointer    = ""
-	tokenSeparator = "/"
-	escapeChar     = "~"
+	rootPointer           = ""
+	tokenSeparator        = "/"
+	escapeChar            = "~"
+	tokenSeparatorEncoded = "~1"
+	escapeCharEncoded     = "~0"
 )
 
 // JSONPointer a list of decoded JSON Pointer reference tokens.
@@ -29,15 +31,15 @@ var ErrNotFound = errors.New("not found")
 
 // DecodeReferenceToken decodes a single JSON Pointer reference token.
 func DecodeReferenceToken(token string) string {
-	token = strings.Replace(token, `~1`, tokenSeparator, -1)
-	token = strings.Replace(token, `~0`, escapeChar, -1)
+	token = strings.Replace(token, tokenSeparatorEncoded, tokenSeparator, -1)
+	token = strings.Replace(token, escapeCharEncoded, escapeChar, -1)
 	return token
 }
 
 // EncodeReferenceToken encodes a single JSON Pointer reference token.
 func EncodeReferenceToken(token string) string {
-	token = strings.Replace(token, escapeChar, `~0`, -1)
-	token = strings.Replace(token, tokenSeparator, `~1`, -1)
+	token = strings.Replace(token, escapeChar, escapeCharEncoded, -1)
+	token = strings.Replace(token, tokenSeparator, tokenSeparatorEncoded, -1)
 	return token
 }
 
@@ -69,19 +71,18 @@ func (tokens JSONPointer) Format() string {
 	return tokenSeparator + strings.Join(encoded, tokenSeparator)
 }
 
-// Find a value in parsed JSON document.
-func (tokens JSONPointer) Find(doc interface{}) (interface{}, error) {
+// Get a specific value from JSON document identified by a JSON Pointer.
+func (tokens JSONPointer) Get(doc interface{}) (interface{}, error) {
 	if len(tokens) == 0 {
 		return doc, nil
 	}
-	parent := doc
-	child := doc
+	var key string
 	for _, token := range tokens {
-		parent = child
-		switch typedParent := parent.(type) {
+		key = token
+		switch typedParent := doc.(type) {
 		case map[string]interface{}:
-			if val, ok := typedParent[token]; ok {
-				child = val
+			if child, ok := typedParent[key]; ok {
+				doc = child
 				continue
 			}
 			return nil, ErrNotFound
@@ -91,5 +92,34 @@ func (tokens JSONPointer) Find(doc interface{}) (interface{}, error) {
 			return nil, ErrNotFound
 		}
 	}
-	return child, nil
+	return doc, nil
+}
+
+// Resolve all values of a JSON document on the path of a JSON Pointer. Each
+// entry in the return list is a value that corresponds to a JSON Pointer token
+// with the same index. Returns nil of the JSON Pointer points to root.
+func (tokens JSONPointer) Resolve(doc interface{}) ([]interface{}, error) {
+	if len(tokens) == 0 {
+		return nil, nil
+	}
+	values := make([]interface{}, len(tokens))
+	val := doc
+	var key string
+	for index, token := range tokens {
+		key = token
+		switch typedParent := val.(type) {
+		case map[string]interface{}:
+			if child, ok := typedParent[key]; ok {
+				val = child
+				values[index] = val
+				continue
+			}
+			return nil, ErrNotFound
+		case []interface{}:
+			return nil, ErrNotFound
+		default:
+			return nil, ErrNotFound
+		}
+	}
+	return values, nil
 }
