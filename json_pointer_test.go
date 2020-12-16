@@ -2,6 +2,7 @@ package jsonjoy
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -237,6 +238,93 @@ func Test_JSONPointer_Get_ReturnsThreeLevelsDeepArrayValue(t *testing.T) {
 	assert.Equal(t, "a", value)
 }
 
+func Test_JSONPointer_Get_ReturnsJSONValuesOfVariousTypes(t *testing.T) {
+	b := []byte(`{
+		"a": null,
+		"b": false,
+		"c": true,
+		"d": 0,
+		"e": 1.1,
+		"f": "",
+		"g": "asdf",
+		"h": [],
+		"i": [null, false, true, -1, 3.4, "", "foo", [], {}],
+		"j": {
+			"a": null,
+			"b": false,
+			"c": true,
+			"d": 0,
+			"e": 1.1,
+			"f": "",
+			"g": "asdf",
+			"h": [],
+			"i": [null, false, true, -1, 3.4, "", "foo", [], {
+				"a": null,
+				"b": false,
+				"c": true,
+				"d": 0,
+				"e": 1.1,
+				"f": "",
+				"g": "asdf",
+				"h": [],
+				"i": [null, false, true, -1, 3.4, "", "foo", [], {}]
+			}]
+		}
+	}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	val, _ := (JSONPointer{"a"}).Get(doc)
+	assert.Equal(t, nil, val)
+	val, _ = (JSONPointer{"b"}).Get(doc)
+	assert.Equal(t, false, val)
+	val, _ = (JSONPointer{"c"}).Get(doc)
+	assert.Equal(t, true, val)
+	val, _ = (JSONPointer{"d"}).Get(doc)
+	assert.Equal(t, 0.0, val)
+	val, _ = (JSONPointer{"e"}).Get(doc)
+	assert.Equal(t, 1.1, val)
+	val, _ = (JSONPointer{"f"}).Get(doc)
+	assert.Equal(t, "", val)
+	val, _ = (JSONPointer{"g"}).Get(doc)
+	assert.Equal(t, "asdf", val)
+	val, _ = (JSONPointer{"h"}).Get(doc)
+	assert.Equal(t, "[]", fmt.Sprint(val))
+	val, _ = (JSONPointer{"i", "0"}).Get(doc)
+	assert.Equal(t, nil, val)
+	val, _ = (JSONPointer{"i", "1"}).Get(doc)
+	assert.Equal(t, false, val)
+	val, _ = (JSONPointer{"i", "2"}).Get(doc)
+	assert.Equal(t, true, val)
+	val, _ = (JSONPointer{"i", "3"}).Get(doc)
+	assert.Equal(t, -1.0, val)
+	val, _ = (JSONPointer{"i", "4"}).Get(doc)
+	assert.Equal(t, 3.4, val)
+	val, _ = (JSONPointer{"i", "5"}).Get(doc)
+	assert.Equal(t, "", val)
+	val, _ = (JSONPointer{"i", "6"}).Get(doc)
+	assert.Equal(t, "foo", val)
+	val, _ = (JSONPointer{"i", "7"}).Get(doc)
+	assert.Equal(t, "[]", fmt.Sprint(val))
+	val, _ = (JSONPointer{"j", "a"}).Get(doc)
+	assert.Equal(t, nil, val)
+	val, _ = (JSONPointer{"j", "b"}).Get(doc)
+	assert.Equal(t, false, val)
+	val, _ = (JSONPointer{"j", "c"}).Get(doc)
+	assert.Equal(t, true, val)
+	val, _ = (JSONPointer{"j", "d"}).Get(doc)
+	assert.Equal(t, 0.0, val)
+	val, _ = (JSONPointer{"j", "e"}).Get(doc)
+	assert.Equal(t, 1.1, val)
+	val, _ = (JSONPointer{"j", "f"}).Get(doc)
+	assert.Equal(t, "", val)
+	val, _ = (JSONPointer{"j", "g"}).Get(doc)
+	assert.Equal(t, "asdf", val)
+	val, _ = (JSONPointer{"j", "h"}).Get(doc)
+	assert.Equal(t, "[]", fmt.Sprint(val))
+	val, _ = (JSONPointer{"j", "i", "8", "i", "2"}).Get(doc)
+	assert.Equal(t, true, val)
+}
+
 func Test_JSONPointer_Resolve_ReturnsNilForDocumentRoot(t *testing.T) {
 	tokens := JSONPointer{}
 	b := []byte(`{"foo": "bar"}`)
@@ -272,4 +360,34 @@ func Test_JSONPointer_Resolve_ReturnsAllValuesOfDeepPointer(t *testing.T) {
 	assert.Equal(t, `{"bar":{"baz":"qux"}}`, string(value1))
 	assert.Equal(t, `{"baz":"qux"}`, string(value2))
 	assert.Equal(t, "qux", values[2])
+}
+
+func Test_JSONPointer_Resolve_ResolvesPointerIntoArrays(t *testing.T) {
+	tokens, _ := NewJSONPointer("/1/1/1")
+	b := []byte(`[1, ["a", [null, "abc"]]]`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	values, err := tokens.Resolve(doc)
+	value1, _ := json.Marshal(values[0])
+	value2, _ := json.Marshal(values[1])
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(values))
+	assert.Equal(t, `["a",[null,"abc"]]`, string(value1))
+	assert.Equal(t, `[null,"abc"]`, string(value2))
+	assert.Equal(t, "abc", values[2])
+}
+
+func Test_JSONPointer_Resolve_ResolvesPointerIntoObjectsAndArrays(t *testing.T) {
+	tokens, _ := NewJSONPointer("/abc/1/1")
+	b := []byte(`{"abc": ["a", [null, "abc"]] }`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	values, err := tokens.Resolve(doc)
+	value1, _ := json.Marshal(values[0])
+	value2, _ := json.Marshal(values[1])
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(values))
+	assert.Equal(t, `["a",[null,"abc"]]`, string(value1))
+	assert.Equal(t, `[null,"abc"]`, string(value2))
+	assert.Equal(t, "abc", values[2])
 }

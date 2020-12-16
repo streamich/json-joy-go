@@ -27,9 +27,6 @@ const (
 // JSONPointer a list of decoded JSON Pointer reference tokens.
 type JSONPointer []string
 
-// JSON represents any valid JSON value.
-type JSON interface{}
-
 // ErrNotFound is returned when JSONPointer.Find cannot locate a value.
 var ErrNotFound = errors.New("not found")
 
@@ -117,15 +114,14 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 		return nil, nil
 	}
 	values := make([]JSON, len(tokens))
-	val := doc
 	var key string
 	for index, token := range tokens {
 		key = token
-		switch typedParent := val.(type) {
+		switch typedParent := doc.(type) {
 		case map[string]interface{}:
 			if child, ok := typedParent[key]; ok {
-				val = child
-				values[index] = val
+				doc = child
+				values[index] = doc
 				continue
 			}
 			return nil, ErrNotFound
@@ -137,7 +133,8 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
 				return nil, ErrInvalidIndex
 			}
-			values[index] = typedParent[tokenIndex]
+			doc = typedParent[tokenIndex]
+			values[index] = doc
 		default:
 			return nil, ErrNotFound
 		}
