@@ -2,6 +2,7 @@ package jsonjoy
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -26,26 +27,32 @@ const (
 // JSONPointer a list of decoded JSON Pointer reference tokens.
 type JSONPointer []string
 
+// JSON represents any valid JSON value.
+type JSON interface{}
+
 // ErrNotFound is returned when JSONPointer.Find cannot locate a value.
 var ErrNotFound = errors.New("not found")
 
-// DecodeReferenceToken decodes a single JSON Pointer reference token.
-func DecodeReferenceToken(token string) string {
+// ErrInvalidIndex is returned when JSON Pointer array index is not valid.
+var ErrInvalidIndex = errors.New("invalid index")
+
+// UnescapeReferenceToken decodes a single JSON Pointer reference token.
+func UnescapeReferenceToken(token string) string {
 	token = strings.Replace(token, tokenSeparatorEncoded, tokenSeparator, -1)
 	token = strings.Replace(token, escapeCharEncoded, escapeChar, -1)
 	return token
 }
 
-// EncodeReferenceToken encodes a single JSON Pointer reference token.
-func EncodeReferenceToken(token string) string {
+// EscapeReferenceToken encodes a single JSON Pointer reference token.
+func EscapeReferenceToken(token string) string {
 	token = strings.Replace(token, escapeChar, escapeCharEncoded, -1)
 	token = strings.Replace(token, tokenSeparator, tokenSeparatorEncoded, -1)
 	return token
 }
 
-// ParseJSONPointer parses JSON Pointer from canonical string form into a Go
+// NewJSONPointer parses JSON Pointer from canonical string form into a Go
 // slice of decoded tokens.
-func ParseJSONPointer(str string) (JSONPointer, error) {
+func NewJSONPointer(str string) (JSONPointer, error) {
 	if len(str) == 0 {
 		return []string{}, nil
 	}
@@ -54,7 +61,7 @@ func ParseJSONPointer(str string) (JSONPointer, error) {
 	}
 	tokens := strings.Split(str[1:], tokenSeparator)
 	for index, token := range tokens {
-		tokens[index] = DecodeReferenceToken(token)
+		tokens[index] = UnescapeReferenceToken(token)
 	}
 	return tokens, nil
 }
@@ -66,13 +73,13 @@ func (tokens JSONPointer) Format() string {
 	}
 	encoded := make([]string, len(tokens))
 	for index, token := range tokens {
-		encoded[index] = EncodeReferenceToken(token)
+		encoded[index] = EscapeReferenceToken(token)
 	}
 	return tokenSeparator + strings.Join(encoded, tokenSeparator)
 }
 
 // Get a specific value from JSON document identified by a JSON Pointer.
-func (tokens JSONPointer) Get(doc interface{}) (interface{}, error) {
+func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 	if len(tokens) == 0 {
 		return doc, nil
 	}
@@ -87,7 +94,14 @@ func (tokens JSONPointer) Get(doc interface{}) (interface{}, error) {
 			}
 			return nil, ErrNotFound
 		case []interface{}:
-			return nil, ErrNotFound
+			tokenIndex, err := strconv.Atoi(token)
+			if err != nil {
+				return nil, ErrInvalidIndex
+			}
+			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
+				return nil, ErrInvalidIndex
+			}
+			doc = typedParent[tokenIndex]
 		default:
 			return nil, ErrNotFound
 		}
@@ -96,13 +110,13 @@ func (tokens JSONPointer) Get(doc interface{}) (interface{}, error) {
 }
 
 // Resolve all values of a JSON document on the path of a JSON Pointer. Each
-// entry in the return list is a value that corresponds to a JSON Pointer token
-// with the same index. Returns nil of the JSON Pointer points to root.
-func (tokens JSONPointer) Resolve(doc interface{}) ([]interface{}, error) {
+// entry in the return list corresponds to a JSON Pointer token reference
+// with the same index. Returns nil if the JSON Pointer points to root.
+func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 	if len(tokens) == 0 {
 		return nil, nil
 	}
-	values := make([]interface{}, len(tokens))
+	values := make([]JSON, len(tokens))
 	val := doc
 	var key string
 	for index, token := range tokens {
@@ -116,7 +130,14 @@ func (tokens JSONPointer) Resolve(doc interface{}) ([]interface{}, error) {
 			}
 			return nil, ErrNotFound
 		case []interface{}:
-			return nil, ErrNotFound
+			tokenIndex, err := strconv.Atoi(token)
+			if err != nil {
+				return nil, ErrInvalidIndex
+			}
+			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
+				return nil, ErrInvalidIndex
+			}
+			values[index] = typedParent[tokenIndex]
 		default:
 			return nil, ErrNotFound
 		}
