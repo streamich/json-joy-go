@@ -14,9 +14,9 @@ func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 		return doc, nil
 	}
 	switch container := obj.(type) {
-	case map[string]interface{}:
+	case map[string]JSON:
 		container[*key] = valueCopy
-	case []interface{}:
+	case []JSON:
 		index, err := ParseTokenAsArrayIndex(*key, container)
 		if err != nil {
 			return nil, err

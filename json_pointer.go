@@ -55,7 +55,7 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 
 // ParseTokenAsArrayIndex parses JSON Pointer reference token to an integer,
 // which can be used as array index.
-func ParseTokenAsArrayIndex(token string, arr []interface{}) (int, error) {
+func ParseTokenAsArrayIndex(token string, arr []JSON) (int, error) {
 	index, err := strconv.Atoi(token)
 	if err != nil {
 		return 0, ErrInvalidIndex
@@ -97,13 +97,13 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 	for _, token := range tokens {
 		key = token
 		switch typedParent := doc.(type) {
-		case map[string]interface{}:
+		case map[string]JSON:
 			if child, ok := typedParent[key]; ok {
 				doc = child
 				continue
 			}
 			return nil, ErrNotFound
-		case []interface{}:
+		case []JSON:
 			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
 				return nil, err
@@ -128,14 +128,14 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 	for index, token := range tokens {
 		key = token
 		switch typedParent := doc.(type) {
-		case map[string]interface{}:
+		case map[string]JSON:
 			if child, ok := typedParent[key]; ok {
 				doc = child
 				values[index] = doc
 				continue
 			}
 			return nil, ErrNotFound
-		case []interface{}:
+		case []JSON:
 			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
 				return nil, err
@@ -160,14 +160,14 @@ func (tokens JSONPointer) Locate(doc JSON) (JSON, *string, error) {
 	for _, token := range tokens {
 		key = token
 		switch typedParent := doc.(type) {
-		case map[string]interface{}:
+		case map[string]JSON:
 			if child, ok := typedParent[key]; ok {
 				obj = doc
 				doc = child
 				continue
 			}
 			return nil, nil, ErrNotFound
-		case []interface{}:
+		case []JSON:
 			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
 				return nil, nil, err

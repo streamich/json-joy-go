@@ -8,13 +8,13 @@ type JSON = interface{}
 // treated as immutable.
 func Copy(value JSON) JSON {
 	switch typedValue := value.(type) {
-	case map[string]interface{}:
+	case map[string]JSON:
 		copy := make(map[string]JSON)
 		for key, val := range typedValue {
 			copy[key] = Copy(val)
 		}
 		return copy
-	case []interface{}:
+	case []JSON:
 		copy := make([]JSON, len(typedValue))
 		for index, val := range typedValue {
 			copy[index] = Copy(val)
