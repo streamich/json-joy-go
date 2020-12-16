@@ -27,5 +27,9 @@ func ParseJSONPointer(str string) ([]string, error) {
 	if str[0] != '/' {
 		return nil, errors.New("Invalid pointer")
 	}
-	return strings.Split(str[1:], "/"), nil
+	tokens := strings.Split(str[1:], "/")
+	for index, token := range tokens {
+		tokens[index] = DecodeReferenceToken(token)
+	}
+	return tokens, nil
 }

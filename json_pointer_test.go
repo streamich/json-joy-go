@@ -52,20 +52,20 @@ func TestEncodeReferenceTokenEncodesSpecialChars(t *testing.T) {
 	assert.Equal(t, encoded, "~1")
 }
 
-func TestReturnsEmptyArrayOnRootPointer(t *testing.T) {
+func TestParseJSONPointerReturnsEmptyArrayOnRootPointer(t *testing.T) {
 	pointer, err := ParseJSONPointer("")
 	assert.Nil(t, err)
 	assert.NotNil(t, pointer)
 	assert.Equal(t, len(pointer), 0)
 }
 
-func TestReturnsErrorIfPointerDoesNotStartWithSlash(t *testing.T) {
+func TestParseJSONPointerReturnsErrorIfPointerDoesNotStartWithSlash(t *testing.T) {
 	pointer, err := ParseJSONPointer("foo/bar")
 	assert.Nil(t, pointer)
 	assert.NotNil(t, err)
 }
 
-func TestParsesASingleStepPointer(t *testing.T) {
+func TestParseJSONPointerParsesASingleStepPointer(t *testing.T) {
 	pointer, err := ParseJSONPointer("/foo")
 	assert.Nil(t, err)
 	assert.NotNil(t, pointer)
@@ -73,7 +73,7 @@ func TestParsesASingleStepPointer(t *testing.T) {
 	assert.Equal(t, (pointer)[0], "foo")
 }
 
-func TestParsesAMultipleStepPointer(t *testing.T) {
+func TestParseJSONPointerParsesAMultipleStepPointer(t *testing.T) {
 	pointer, err := ParseJSONPointer("/foo/bar/baz")
 	assert.Nil(t, err)
 	assert.NotNil(t, pointer)
@@ -81,4 +81,19 @@ func TestParsesAMultipleStepPointer(t *testing.T) {
 	assert.Equal(t, pointer[0], "foo")
 	assert.Equal(t, pointer[1], "bar")
 	assert.Equal(t, pointer[2], "baz")
+}
+
+func TestParseJSONPointerDecodesTokens(t *testing.T) {
+	pointer, err := ParseJSONPointer("/foo~1bar")
+	assert.Nil(t, err)
+	assert.NotNil(t, pointer)
+	assert.Equal(t, len(pointer), 1)
+	assert.Equal(t, pointer[0], "foo/bar")
+	pointer, err = ParseJSONPointer("/foo~1/bar/ba~0~1~0z")
+	assert.Nil(t, err)
+	assert.NotNil(t, pointer)
+	assert.Equal(t, len(pointer), 3)
+	assert.Equal(t, pointer[0], "foo/")
+	assert.Equal(t, pointer[1], "bar")
+	assert.Equal(t, pointer[2], "ba~/~z")
 }
