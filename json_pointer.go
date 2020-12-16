@@ -11,7 +11,7 @@ const (
 )
 
 // JSONPointer a list of decoded JSON Pointer reference tokens.
-type JSONPointer = []string
+type JSONPointer []string
 
 // DecodeReferenceToken decodes a single JSON Pointer reference token.
 func DecodeReferenceToken(token string) string {
@@ -44,7 +44,7 @@ func ParseJSONPointer(str string) (JSONPointer, error) {
 }
 
 // FormatJSONPointer formats JSON Pointer tokens into the canonical string form.
-func FormatJSONPointer(tokens JSONPointer) string {
+func (tokens JSONPointer) format() string {
 	if len(tokens) == 0 {
 		return rootPointer
 	}

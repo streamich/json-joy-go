@@ -99,23 +99,28 @@ func TestParseJSONPointerDecodesTokens(t *testing.T) {
 }
 
 func TestFormatJSONPointerFormatsTokensIntoJsonPointer(t *testing.T) {
-	str := FormatJSONPointer([]string{"foo", "bar", "baz"})
+	tokens := JSONPointer{"foo", "bar", "baz"}
+	str := tokens.format()
 	assert.Equal(t, str, "/foo/bar/baz")
 }
 
 func TestFormatJSONPointerFormatsASingleToken(t *testing.T) {
-	str := FormatJSONPointer([]string{"aga"})
+	tokens := JSONPointer{"aga"}
+	str := tokens.format()
 	assert.Equal(t, str, "/aga")
 }
 
 func TestFormatJSONPointerFormatsARootPointer(t *testing.T) {
-	str := FormatJSONPointer([]string{})
+	tokens := JSONPointer{}
+	str := tokens.format()
 	assert.Equal(t, str, "")
 }
 
 func TestFormatJSONPointerEncodesSpecialChars(t *testing.T) {
-	str := FormatJSONPointer([]string{"foo/bar"})
+	tokens := JSONPointer{"foo/bar"}
+	str := tokens.format()
 	assert.Equal(t, str, "/foo~1bar")
-	str = FormatJSONPointer([]string{"foo/bar", "/", "~", "a~b/"})
+	tokens = JSONPointer{"foo/bar", "/", "~", "a~b/"}
+	str = tokens.format()
 	assert.Equal(t, str, "/foo~1bar/~1/~0/a~0b~1")
 }
