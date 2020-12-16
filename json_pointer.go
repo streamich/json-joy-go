@@ -10,6 +10,9 @@ const (
 	pointerSeparator = "/"
 )
 
+// JSONPointer a list of decoded JSON Pointer reference tokens.
+type JSONPointer = []string
+
 // DecodeReferenceToken decodes a single JSON Pointer reference token.
 func DecodeReferenceToken(token string) string {
 	token = strings.Replace(token, `~1`, pointerSeparator, -1)
@@ -26,7 +29,7 @@ func EncodeReferenceToken(token string) string {
 
 // ParseJSONPointer parses JSON Pointer from canonical string form into a Go
 // slice of decoded tokens.
-func ParseJSONPointer(str string) ([]string, error) {
+func ParseJSONPointer(str string) (JSONPointer, error) {
 	if len(str) == 0 {
 		return []string{}, nil
 	}
@@ -41,7 +44,7 @@ func ParseJSONPointer(str string) ([]string, error) {
 }
 
 // FormatJSONPointer formats JSON Pointer tokens into the canonical string form.
-func FormatJSONPointer(tokens []string) string {
+func FormatJSONPointer(tokens JSONPointer) string {
 	if len(tokens) == 0 {
 		return rootPointer
 	}
