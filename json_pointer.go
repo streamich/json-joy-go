@@ -53,6 +53,24 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 	return tokens, nil
 }
 
+// ParseTokenAsArrayIndex parses JSON Pointer reference token to an integer,
+// which can be used as array index.
+func ParseTokenAsArrayIndex(token string, arr []interface{}) (int, error) {
+	index, err := strconv.Atoi(token)
+	if err != nil {
+		return 0, ErrInvalidIndex
+	}
+	if index < 0 {
+		return 0, ErrInvalidIndex
+	}
+	if arr != nil {
+		if index >= len(arr) {
+			return 0, ErrInvalidIndex
+		}
+	}
+	return index, nil
+}
+
 // IsRoot returns true if JSON Pointer points to the root of a document.
 func (tokens JSONPointer) IsRoot() bool {
 	return len(tokens) == 0
@@ -86,12 +104,9 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 			}
 			return nil, ErrNotFound
 		case []interface{}:
-			tokenIndex, err := strconv.Atoi(token)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
-				return nil, ErrInvalidIndex
-			}
-			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
-				return nil, ErrInvalidIndex
+				return nil, err
 			}
 			doc = typedParent[tokenIndex]
 		default:
@@ -121,12 +136,9 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 			}
 			return nil, ErrNotFound
 		case []interface{}:
-			tokenIndex, err := strconv.Atoi(token)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
-				return nil, ErrInvalidIndex
-			}
-			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
-				return nil, ErrInvalidIndex
+				return nil, err
 			}
 			doc = typedParent[tokenIndex]
 			values[index] = doc
@@ -156,12 +168,9 @@ func (tokens JSONPointer) Locate(doc JSON) (JSON, *string, error) {
 			}
 			return nil, nil, ErrNotFound
 		case []interface{}:
-			tokenIndex, err := strconv.Atoi(token)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
 			if err != nil {
-				return nil, nil, ErrInvalidIndex
-			}
-			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
-				return nil, nil, ErrInvalidIndex
+				return nil, nil, err
 			}
 			obj = doc
 			doc = typedParent[tokenIndex]

@@ -1,7 +1,7 @@
 package jsonjoy
 
 // JSON represents any valid JSON value.
-type JSON interface{}
+type JSON = interface{}
 
 // Copy makes a deep copy of JSON object. New memory is allocated only for
 // object and array types. Primitive types (nil, float, bool, string) are
