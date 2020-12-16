@@ -97,3 +97,25 @@ func TestParseJSONPointerDecodesTokens(t *testing.T) {
 	assert.Equal(t, pointer[1], "bar")
 	assert.Equal(t, pointer[2], "ba~/~z")
 }
+
+func TestFormatJSONPointerFormatsTokensIntoJsonPointer(t *testing.T) {
+	str := FormatJSONPointer([]string{"foo", "bar", "baz"})
+	assert.Equal(t, str, "/foo/bar/baz")
+}
+
+func TestFormatJSONPointerFormatsASingleToken(t *testing.T) {
+	str := FormatJSONPointer([]string{"aga"})
+	assert.Equal(t, str, "/aga")
+}
+
+func TestFormatJSONPointerFormatsARootPointer(t *testing.T) {
+	str := FormatJSONPointer([]string{})
+	assert.Equal(t, str, "")
+}
+
+func TestFormatJSONPointerEncodesSpecialChars(t *testing.T) {
+	str := FormatJSONPointer([]string{"foo/bar"})
+	assert.Equal(t, str, "/foo~1bar")
+	str = FormatJSONPointer([]string{"foo/bar", "/", "~", "a~b/"})
+	assert.Equal(t, str, "/foo~1bar/~1/~0/a~0b~1")
+}

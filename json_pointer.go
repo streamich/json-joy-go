@@ -19,7 +19,8 @@ func EncodeReferenceToken(token string) string {
 	return token
 }
 
-// ParseJSONPointer parses JSON Pointer from canonical string form into a Go slice.
+// ParseJSONPointer parses JSON Pointer from canonical string form into a Go
+// slice of decoded tokens.
 func ParseJSONPointer(str string) ([]string, error) {
 	if len(str) == 0 {
 		return []string{}, nil
@@ -32,4 +33,16 @@ func ParseJSONPointer(str string) ([]string, error) {
 		tokens[index] = DecodeReferenceToken(token)
 	}
 	return tokens, nil
+}
+
+// FormatJSONPointer formats JSON Pointer tokens into the canonical string form.
+func FormatJSONPointer(tokens []string) string {
+	if len(tokens) == 0 {
+		return ""
+	}
+	encoded := make([]string, len(tokens))
+	for index, token := range tokens {
+		encoded[index] = EncodeReferenceToken(token)
+	}
+	return "/" + strings.Join(encoded, "/")
 }
