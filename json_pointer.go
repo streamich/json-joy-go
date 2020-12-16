@@ -5,9 +5,14 @@ import (
 	"strings"
 )
 
+const (
+	rootPointer      = ""
+	pointerSeparator = "/"
+)
+
 // DecodeReferenceToken decodes a single JSON Pointer reference token.
 func DecodeReferenceToken(token string) string {
-	token = strings.Replace(token, `~1`, `/`, -1)
+	token = strings.Replace(token, `~1`, pointerSeparator, -1)
 	token = strings.Replace(token, `~0`, `~`, -1)
 	return token
 }
@@ -15,7 +20,7 @@ func DecodeReferenceToken(token string) string {
 // EncodeReferenceToken encodes a single JSON Pointer reference token.
 func EncodeReferenceToken(token string) string {
 	token = strings.Replace(token, `~`, `~0`, -1)
-	token = strings.Replace(token, `/`, `~1`, -1)
+	token = strings.Replace(token, pointerSeparator, `~1`, -1)
 	return token
 }
 
@@ -28,7 +33,7 @@ func ParseJSONPointer(str string) ([]string, error) {
 	if str[0] != '/' {
 		return nil, errors.New("Invalid pointer")
 	}
-	tokens := strings.Split(str[1:], "/")
+	tokens := strings.Split(str[1:], pointerSeparator)
 	for index, token := range tokens {
 		tokens[index] = DecodeReferenceToken(token)
 	}
@@ -38,11 +43,11 @@ func ParseJSONPointer(str string) ([]string, error) {
 // FormatJSONPointer formats JSON Pointer tokens into the canonical string form.
 func FormatJSONPointer(tokens []string) string {
 	if len(tokens) == 0 {
-		return ""
+		return rootPointer
 	}
 	encoded := make([]string, len(tokens))
 	for index, token := range tokens {
 		encoded[index] = EncodeReferenceToken(token)
 	}
-	return "/" + strings.Join(encoded, "/")
+	return pointerSeparator + strings.Join(encoded, pointerSeparator)
 }
