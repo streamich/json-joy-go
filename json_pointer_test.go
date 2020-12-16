@@ -391,3 +391,58 @@ func Test_JSONPointer_Resolve_ResolvesPointerIntoObjectsAndArrays(t *testing.T) 
 	assert.Equal(t, `[null,"abc"]`, string(value2))
 	assert.Equal(t, "abc", values[2])
 }
+
+func Test_JSONPointer_Locate_ReturnsNilForDocumentRoot(t *testing.T) {
+	tokens := JSONPointer{}
+	b := []byte(`{"foo": "bar"}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	obj, key, err := tokens.Locate(doc)
+	assert.Nil(t, err)
+	assert.Nil(t, key)
+	assert.Nil(t, obj)
+}
+
+func Test_JSONPointer_Locate_CanLocateFirstLevelKeyInObject(t *testing.T) {
+	tokens := JSONPointer{"foo"}
+	b := []byte(`{"foo": "bar"}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	obj, key, err := tokens.Locate(doc)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", *key)
+	assert.Equal(t, "map[foo:bar]", fmt.Sprint(obj))
+}
+
+func Test_JSONPointer_Locate_CanLocateSecondLevelKeyInObject(t *testing.T) {
+	tokens := JSONPointer{"foo", "c"}
+	b := []byte(`{"foo": {"a": 1, "c": 2}}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	obj, key, err := tokens.Locate(doc)
+	assert.Nil(t, err)
+	assert.Equal(t, "c", *key)
+	assert.Equal(t, "map[a:1 c:2]", fmt.Sprint(obj))
+}
+
+func Test_JSONPointer_Locate_CanLocateFirstLevelKeyInArray(t *testing.T) {
+	tokens := JSONPointer{"1"}
+	b := []byte(`["a", "b", "c"]`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	obj, key, err := tokens.Locate(doc)
+	assert.Nil(t, err)
+	assert.Equal(t, "1", *key)
+	assert.Equal(t, "[a b c]", fmt.Sprint(obj))
+}
+
+func Test_JSONPointer_Locate_CanLocateSecondLevelKeyInArray(t *testing.T) {
+	tokens := JSONPointer{"1", "2"}
+	b := []byte(`["a", [1,2,3], "c"]`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	obj, key, err := tokens.Locate(doc)
+	assert.Nil(t, err)
+	assert.Equal(t, "2", *key)
+	assert.Equal(t, "[1 2 3]", fmt.Sprint(obj))
+}

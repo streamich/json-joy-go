@@ -53,9 +53,14 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 	return tokens, nil
 }
 
+// IsRoot returns true if JSON Pointer points to the root of a document.
+func (tokens JSONPointer) IsRoot() bool {
+	return len(tokens) == 0
+}
+
 // Format formats JSON Pointer tokens into the canonical string form.
 func (tokens JSONPointer) Format() string {
-	if len(tokens) == 0 {
+	if tokens.IsRoot() {
 		return rootPointer
 	}
 	encoded := make([]string, len(tokens))
@@ -67,7 +72,7 @@ func (tokens JSONPointer) Format() string {
 
 // Get a specific value from JSON document identified by a JSON Pointer.
 func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
-	if len(tokens) == 0 {
+	if tokens.IsRoot() {
 		return doc, nil
 	}
 	var key string
@@ -100,7 +105,7 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 // entry in the return list corresponds to a JSON Pointer token reference
 // with the same index. Returns nil if the JSON Pointer points to root.
 func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
-	if len(tokens) == 0 {
+	if tokens.IsRoot() {
 		return nil, nil
 	}
 	values := make([]JSON, len(tokens))
@@ -130,4 +135,39 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 		}
 	}
 	return values, nil
+}
+
+// Locate finds an object or an array which contains value located by JSON
+// pointer and returns that object as well as the last reference token.
+func (tokens JSONPointer) Locate(doc JSON) (JSON, *string, error) {
+	if tokens.IsRoot() {
+		return nil, nil, nil
+	}
+	obj := doc
+	var key string
+	for _, token := range tokens {
+		key = token
+		switch typedParent := doc.(type) {
+		case map[string]interface{}:
+			if child, ok := typedParent[key]; ok {
+				obj = doc
+				doc = child
+				continue
+			}
+			return nil, nil, ErrNotFound
+		case []interface{}:
+			tokenIndex, err := strconv.Atoi(token)
+			if err != nil {
+				return nil, nil, ErrInvalidIndex
+			}
+			if tokenIndex < 0 || tokenIndex >= len(typedParent) {
+				return nil, nil, ErrInvalidIndex
+			}
+			obj = doc
+			doc = typedParent[tokenIndex]
+		default:
+			return nil, nil, ErrNotFound
+		}
+	}
+	return obj, &key, nil
 }
