@@ -6,16 +6,6 @@ import (
 	"strings"
 )
 
-// JSONValue represents a type of JSON value.
-type JSONValue int
-
-// JSON value types.
-const (
-	JSONObject JSONValue = iota
-	JSONArray
-	JSONPrimitive
-)
-
 const (
 	rootPointer           = ""
 	tokenSeparator        = "/"
