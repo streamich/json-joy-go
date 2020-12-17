@@ -112,3 +112,28 @@ func Test_JsonPatch_Add_CanInsertItemIntoAnEmptyArray(t *testing.T) {
 	assert.Equal(t, "map[a:[asdf]]", fmt.Sprint(doc1))
 	assert.Equal(t, "map[a:[asdf]]", fmt.Sprint(doc2))
 }
+
+func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArray(t *testing.T) {
+	b := []byte(`{"a": []}`)
+	var doc JSON
+	json.Unmarshal(b, &doc)
+	doc1 := Copy(doc)
+	doc2, _ := Add(doc1, JSONPointer{"a", "-"}, 3)
+	doc2, _ = Add(doc2, JSONPointer{"a", "-"}, 4)
+	doc2, _ = Add(doc2, JSONPointer{"a", "-"}, 5)
+	assert.Equal(t, "map[a:[]]", fmt.Sprint(doc))
+	assert.Equal(t, "map[a:[3 4 5]]", fmt.Sprint(doc1))
+	assert.Equal(t, "map[a:[3 4 5]]", fmt.Sprint(doc2))
+}
+
+func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.T) {
+	b := []byte(`[]`)
+	var doc JSON
+	json.Unmarshal(b, &doc)
+	doc1 := Copy(doc)
+	doc2, _ := Add(doc1, JSONPointer{"-"}, 1)
+	doc2, _ = Add(doc2, JSONPointer{"-"}, 1)
+	doc2, _ = Add(doc2, JSONPointer{"-"}, 2)
+	assert.Equal(t, "[]", fmt.Sprint(doc))
+	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
+}

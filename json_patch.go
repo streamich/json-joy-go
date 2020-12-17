@@ -53,9 +53,15 @@ func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	case map[string]JSON:
 		container[key] = value
 	case []JSON:
-		index, err := ParseTokenAsArrayIndex(key, len(container))
-		if err != nil {
-			return nil, err
+		var index int = 0
+		if key == "-" {
+			index = len(container)
+		} else {
+			parsedIndex, err := ParseTokenAsArrayIndex(key, len(container))
+			if err != nil {
+				return nil, err
+			}
+			index = parsedIndex
 		}
 		container = insert(container, index, value)
 		if len(tokens) == 1 {
