@@ -1,5 +1,6 @@
 package jsonjoy
 
+// Inserts an element into a slice and shifts needed elements to right.
 func insert(slice []interface{}, pos int, value interface{}) []interface{} {
 	length := len(slice)
 	if pos >= length {
@@ -11,11 +12,10 @@ func insert(slice []interface{}, pos int, value interface{}) []interface{} {
 	return slice
 }
 
-// Add `value` into `doc` at `tokens` location.
-func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
-	valueCopy := Copy(value)
+// replaces a key in object or array.
+func replaceKey(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	if tokens.IsRoot() {
-		return valueCopy, nil
+		return value, nil
 	}
 	obj, key, err := tokens.Locate(doc)
 	if err != nil {
@@ -26,20 +26,42 @@ func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	}
 	switch container := obj.(type) {
 	case map[string]JSON:
-		container[*key] = valueCopy
+		container[*key] = value
 	case []JSON:
-		index, err := ParseTokenAsArrayIndex(*key, container)
+		index, err := ParseTokenAsArrayIndex(*key, len(container))
 		if err != nil {
 			return nil, err
 		}
-		// length := len(container)
-		// append(container[:length+1], valueCopy)
-		// if index < length {
-		// 	for i := index; i <= length; i++ {
-		// 		sum += i
-		// 	}
-		// }
-		container[index] = valueCopy
+		container[index] = value
+	}
+	return doc, nil
+}
+
+// Add `value` into `doc` at `tokens` location. `doc` and `value` params can
+// be mutated, you need to clone them using `Copy` manually.
+func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
+	if tokens.IsRoot() {
+		return value, nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	container, err := parentTokens.Get(doc)
+	if err != nil {
+		return nil, err
+	}
+	key := tokens[len(tokens)-1]
+	switch container := container.(type) {
+	case map[string]JSON:
+		container[key] = value
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(container))
+		if err != nil {
+			return nil, err
+		}
+		container = insert(container, index, value)
+		if len(tokens) == 1 {
+			return container, nil
+		}
+		return replaceKey(doc, parentTokens, container)
 	}
 	return doc, nil
 }

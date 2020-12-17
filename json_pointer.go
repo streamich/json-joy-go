@@ -55,7 +55,7 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 
 // ParseTokenAsArrayIndex parses JSON Pointer reference token to an integer,
 // which can be used as array index.
-func ParseTokenAsArrayIndex(token string, arr []JSON) (int, error) {
+func ParseTokenAsArrayIndex(token string, maxIndex int) (int, error) {
 	index, err := strconv.Atoi(token)
 	if err != nil {
 		return 0, ErrInvalidIndex
@@ -63,8 +63,8 @@ func ParseTokenAsArrayIndex(token string, arr []JSON) (int, error) {
 	if index < 0 {
 		return 0, ErrInvalidIndex
 	}
-	if arr != nil {
-		if index >= len(arr) {
+	if maxIndex > 0 {
+		if index > maxIndex {
 			return 0, ErrInvalidIndex
 		}
 	}
@@ -104,7 +104,7 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 			}
 			return nil, ErrNotFound
 		case []JSON:
-			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, len(typedParent)-1)
 			if err != nil {
 				return nil, err
 			}
@@ -136,7 +136,7 @@ func (tokens JSONPointer) Resolve(doc JSON) ([]JSON, error) {
 			}
 			return nil, ErrNotFound
 		case []JSON:
-			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, len(typedParent)-1)
 			if err != nil {
 				return nil, err
 			}
@@ -168,7 +168,7 @@ func (tokens JSONPointer) Locate(doc JSON) (JSON, *string, error) {
 			}
 			return nil, nil, ErrNotFound
 		case []JSON:
-			tokenIndex, err := ParseTokenAsArrayIndex(token, typedParent)
+			tokenIndex, err := ParseTokenAsArrayIndex(token, len(typedParent)-1)
 			if err != nil {
 				return nil, nil, err
 			}
