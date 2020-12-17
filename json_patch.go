@@ -71,3 +71,18 @@ func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	}
 	return doc, nil
 }
+
+// ApplyOperation applies a single operation.
+func ApplyOperation(doc JSON, operation map[string]JSON) (JSON, error) {
+	op, _ := operation["op"].(string)
+	switch op {
+	case "add":
+		return Add(doc, operation["path"].(JSONPointer), operation["value"].(JSON))
+	}
+	return doc, nil
+}
+
+// ApplyOperations applies a JSON Patch to the document.
+func ApplyOperations(doc JSON, operations [](map[string]JSON)) (JSON, error) {
+	return doc, nil
+}
