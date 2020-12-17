@@ -6,41 +6,41 @@ import (
 
 // OpAdd JSON Patch "add" operation.
 type OpAdd struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 	value     JSON
 }
 
 // OpRemove JSON Patch "remove" operation.
 type OpRemove struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 }
 
 // OpReplace JSON Patch "replace" operation.
 type OpReplace struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 	value     JSON
 }
 
 // OpMove JSON Patch "move" operation.
 type OpMove struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 	from      JSONPointer
 }
 
 // OpCopy JSON Patch "copy" operation.
 type OpCopy struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 	from      JSONPointer
 }
 
 // OpTest JSON Patch "test" operation.
 type OpTest struct {
-	operation JSON
+	operation *map[string]JSON
 	path      JSONPointer
 	value     JSON
 	not       bool
@@ -100,6 +100,12 @@ func CreateOp(operation JSON) (interface{}, error) {
 		return createAddOp(obj)
 	case "replace":
 		return createReplaceOp(obj)
+	case "remove":
+		return createRemoveOp(obj)
+	case "move":
+		return createMoveOp(obj)
+	case "copy":
+		return createCopyOp(obj)
 	case "test":
 		return createTestOp(obj)
 	default:
@@ -133,7 +139,7 @@ func createAddOp(operation map[string]JSON) (*OpAdd, error) {
 	if !ok {
 		return nil, ErrOperationMissingValue
 	}
-	op := OpAdd{operation: operation, path: path, value: value}
+	op := OpAdd{operation: &operation, path: path, value: value}
 	return &op, nil
 }
 
@@ -154,7 +160,7 @@ func createReplaceOp(operation map[string]JSON) (*OpReplace, error) {
 	if !ok {
 		return nil, ErrOperationMissingValue
 	}
-	op := OpReplace{operation: operation, path: path, value: value}
+	op := OpReplace{operation: &operation, path: path, value: value}
 	return &op, nil
 }
 
@@ -175,6 +181,81 @@ func createTestOp(operation map[string]JSON) (*OpTest, error) {
 	if !ok {
 		return nil, ErrOperationMissingValue
 	}
-	op := OpTest{operation: operation, path: path, value: value}
+	op := OpTest{operation: &operation, path: path, value: value}
+	return &op, nil
+}
+
+func createRemoveOp(operation map[string]JSON) (*OpRemove, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	op := OpRemove{operation: &operation, path: path}
+	return &op, nil
+}
+
+func createMoveOp(operation map[string]JSON) (*OpMove, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	fromInterface, ok := operation["from"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	fromString, ok := fromInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	from, err := NewJSONPointer(fromString)
+	if err != nil {
+		return nil, err
+	}
+	op := OpMove{operation: &operation, path: path, from: from}
+	return &op, nil
+}
+
+func createCopyOp(operation map[string]JSON) (*OpCopy, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	fromInterface, ok := operation["from"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	fromString, ok := fromInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	from, err := NewJSONPointer(fromString)
+	if err != nil {
+		return nil, err
+	}
+	op := OpCopy{operation: &operation, path: path, from: from}
 	return &op, nil
 }

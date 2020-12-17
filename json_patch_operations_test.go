@@ -130,7 +130,10 @@ func Test_JsonPatchOperations_CreateOps_CanCreateMultipleOperations(t *testing.T
 	b := []byte(`[
 		{"op": "add", "path": "/foo/bar/baz", "value": {"a": "b"}},
 		{"op": "replace", "path": "/a/1", "value": {"a": "c"}},
-		{"op": "test", "path": "", "value": 123}
+		{"op": "test", "path": "", "value": 123},
+		{"op": "remove", "path": "/asdf"},
+		{"op": "move", "path": "/a/b", "from": "/c/d"},
+		{"op": "copy", "path": "/1/2", "from": "/3/4"}
 	]`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
@@ -139,7 +142,7 @@ func Test_JsonPatchOperations_CreateOps_CanCreateMultipleOperations(t *testing.T
 	assert.Nil(t, err)
 	assert.Equal(t, -1, index)
 	assert.NotNil(t, ops)
-	assert.Equal(t, 3, len(ops))
+	assert.Equal(t, 6, len(ops))
 
 	op1, ok1 := ops[0].(*OpAdd)
 	assert.Equal(t, true, ok1)
@@ -160,4 +163,27 @@ func Test_JsonPatchOperations_CreateOps_CanCreateMultipleOperations(t *testing.T
 	assert.Equal(t, true, ok3)
 	assert.Equal(t, 0, len(op3.path))
 	assert.Equal(t, 123.0, op3.value)
+
+	op4, ok4 := ops[3].(*OpRemove)
+	assert.Equal(t, true, ok4)
+	assert.Equal(t, 1, len(op4.path))
+	assert.Equal(t, "asdf", op4.path[0])
+
+	op5, ok5 := ops[4].(*OpMove)
+	assert.Equal(t, true, ok5)
+	assert.Equal(t, 2, len(op5.path))
+	assert.Equal(t, "a", op5.path[0])
+	assert.Equal(t, "b", op5.path[1])
+	assert.Equal(t, 2, len(op5.from))
+	assert.Equal(t, "c", op5.from[0])
+	assert.Equal(t, "d", op5.from[1])
+
+	op6, ok6 := ops[5].(*OpCopy)
+	assert.Equal(t, true, ok6)
+	assert.Equal(t, 2, len(op6.path))
+	assert.Equal(t, "1", op6.path[0])
+	assert.Equal(t, "2", op6.path[1])
+	assert.Equal(t, 2, len(op6.from))
+	assert.Equal(t, "3", op6.from[0])
+	assert.Equal(t, "4", op6.from[1])
 }
