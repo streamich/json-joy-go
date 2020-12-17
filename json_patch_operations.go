@@ -4,28 +4,67 @@ import (
 	"errors"
 )
 
+// OpAdd JSON Patch "add" operation.
+type OpAdd struct {
+	path  JSONPointer
+	value JSON
+}
+
+// OpRemove JSON Patch "remove" operation.
+type OpRemove struct {
+	path JSONPointer
+}
+
+// OpReplace JSON Patch "replace" operation.
+type OpReplace struct {
+	path  JSONPointer
+	value JSON
+}
+
+// OpMove JSON Patch "move" operation.
+type OpMove struct {
+	path JSONPointer
+	from JSONPointer
+}
+
+// OpCopy JSON Patch "copy" operation.
+type OpCopy struct {
+	path JSONPointer
+	from JSONPointer
+}
+
+// OpTest JSON Patch "test" operation.
+type OpTest struct {
+	path  JSONPointer
+	value JSON
+	not   bool
+}
+
 // ErrPatchInvalid returned when JSON Patch is invalid.
 var ErrPatchInvalid = errors.New("patch invalid")
 
 // ErrPatchEmpty returned when JSON Patch array is empty.
 var ErrPatchEmpty = errors.New("patch empty")
 
-// ValidateOperations validates a list of JSON Patch operations.
-func ValidateOperations(patch JSON) (int, error) {
+// CreateOps validates a list of JSON Patch operations.
+func CreateOps(patch JSON) ([]interface{}, int, error) {
 	arr, ok := patch.([]JSON)
 	if !ok {
-		return -1, ErrPatchInvalid
+		return nil, -1, ErrPatchInvalid
 	}
-	if len(arr) == 0 {
-		return -1, ErrPatchEmpty
+	length := len(arr)
+	if length == 0 {
+		return nil, -1, ErrPatchEmpty
 	}
+	ops := make([]interface{}, length)
 	for index, operation := range arr {
-		err := ValidateOperation(operation)
+		op, err := CreateOp(operation)
 		if err != nil {
-			return index, err
+			return nil, index, err
 		}
+		ops[index] = op
 	}
-	return -1, nil
+	return ops, -1, nil
 }
 
 // ErrOperationInvalid returned when JSON Patch operation is invalid.
@@ -34,25 +73,25 @@ var ErrOperationInvalid = errors.New("operation invalid")
 // ErrOperationUnknown returned when JSON Patch operation opcode is not recognized.
 var ErrOperationUnknown = errors.New("operation unknown")
 
-// ValidateOperation validates a single JSON Patch operation.
-func ValidateOperation(operation JSON) error {
+// CreateOp validates a single JSON Patch operation.
+func CreateOp(operation JSON) (interface{}, error) {
 	obj, ok := operation.(map[string]JSON)
 	if !ok {
-		return ErrOperationInvalid
+		return nil, ErrOperationInvalid
 	}
 	opInterface, ok := obj["op"]
 	if !ok {
-		return ErrOperationInvalid
+		return nil, ErrOperationInvalid
 	}
 	op, ok := opInterface.(string)
 	if !ok {
-		return ErrOperationInvalid
+		return nil, ErrOperationInvalid
 	}
 	switch op {
 	case "add":
-		return validateOperationWithPathAndValue(obj)
+		return createAddOp(obj)
 	default:
-		return ErrOperationUnknown
+		return nil, ErrOperationUnknown
 	}
 }
 
@@ -65,34 +104,20 @@ var ErrOperationInvalidPath = errors.New("op_invalid_path")
 // ErrOperationMissingValue returned when operation is missing "value" field.
 var ErrOperationMissingValue = errors.New("op_missing_value")
 
-func validateOperationWithPathAndValue(operation map[string]JSON) error {
+func createAddOp(operation map[string]JSON) (interface{}, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return ErrOperationMissingPath
+		return nil, ErrOperationMissingPath
 	}
 	path, ok := pathInterface.(string)
 	if !ok {
-		return ErrOperationInvalidPath
+		return nil, ErrOperationInvalidPath
 	}
 	if err := ValidateJSONPointer(path); err != nil {
-		return err
+		return nil, err
 	}
 	if _, ok := operation["value"]; !ok {
-		return ErrOperationMissingValue
+		return nil, ErrOperationMissingValue
 	}
-	return nil
-}
-
-// ErrPointerInvalid returned when JSON Pointer is invalid.
-var ErrPointerInvalid = errors.New("pointer_invalid")
-
-// ValidateJSONPointer returns error if JSON Pointer in string form is invalid.
-func ValidateJSONPointer(pointer string) error {
-	if len(pointer) == 0 {
-		return nil
-	}
-	if pointer[0] != '/' {
-		return ErrPointerInvalid
-	}
-	return nil
+	return nil, nil
 }

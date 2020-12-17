@@ -37,6 +37,20 @@ func EscapeReferenceToken(token string) string {
 	return token
 }
 
+// ErrPointerInvalid returned when JSON Pointer is invalid.
+var ErrPointerInvalid = errors.New("pointer_invalid")
+
+// ValidateJSONPointer returns error if JSON Pointer in string form is invalid.
+func ValidateJSONPointer(pointer string) error {
+	if len(pointer) == 0 {
+		return nil
+	}
+	if pointer[0] != '/' {
+		return ErrPointerInvalid
+	}
+	return nil
+}
+
 // NewJSONPointer parses JSON Pointer from canonical string form into a Go
 // slice of decoded tokens.
 func NewJSONPointer(str string) (JSONPointer, error) {
@@ -44,7 +58,7 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 		return []string{}, nil
 	}
 	if str[0] != '/' {
-		return nil, errors.New("Invalid pointer")
+		return nil, ErrPointerInvalid
 	}
 	tokens := strings.Split(str[1:], tokenSeparator)
 	for index, token := range tokens {
