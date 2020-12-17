@@ -6,38 +6,44 @@ import (
 
 // OpAdd JSON Patch "add" operation.
 type OpAdd struct {
-	path  JSONPointer
-	value JSON
+	operation JSON
+	path      JSONPointer
+	value     JSON
 }
 
 // OpRemove JSON Patch "remove" operation.
 type OpRemove struct {
-	path JSONPointer
+	operation JSON
+	path      JSONPointer
 }
 
 // OpReplace JSON Patch "replace" operation.
 type OpReplace struct {
-	path  JSONPointer
-	value JSON
+	operation JSON
+	path      JSONPointer
+	value     JSON
 }
 
 // OpMove JSON Patch "move" operation.
 type OpMove struct {
-	path JSONPointer
-	from JSONPointer
+	operation JSON
+	path      JSONPointer
+	from      JSONPointer
 }
 
 // OpCopy JSON Patch "copy" operation.
 type OpCopy struct {
-	path JSONPointer
-	from JSONPointer
+	operation JSON
+	path      JSONPointer
+	from      JSONPointer
 }
 
 // OpTest JSON Patch "test" operation.
 type OpTest struct {
-	path  JSONPointer
-	value JSON
-	not   bool
+	operation JSON
+	path      JSONPointer
+	value     JSON
+	not       bool
 }
 
 // ErrPatchInvalid returned when JSON Patch is invalid.
@@ -46,7 +52,9 @@ var ErrPatchInvalid = errors.New("patch invalid")
 // ErrPatchEmpty returned when JSON Patch array is empty.
 var ErrPatchEmpty = errors.New("patch empty")
 
-// CreateOps validates a list of JSON Patch operations.
+// CreateOps validates a list of JSON Patch operations and returns a list of
+// Op* structs. Second return argument integer represents operation in which
+// error happened, or is set to -1 if validation error did not happen in an operation.
 func CreateOps(patch JSON) ([]interface{}, int, error) {
 	arr, ok := patch.([]JSON)
 	if !ok {
@@ -90,6 +98,10 @@ func CreateOp(operation JSON) (interface{}, error) {
 	switch op {
 	case "add":
 		return createAddOp(obj)
+	case "replace":
+		return createReplaceOp(obj)
+	case "test":
+		return createTestOp(obj)
 	default:
 		return nil, ErrOperationUnknown
 	}
@@ -104,7 +116,7 @@ var ErrOperationInvalidPath = errors.New("op_invalid_path")
 // ErrOperationMissingValue returned when operation is missing "value" field.
 var ErrOperationMissingValue = errors.New("op_missing_value")
 
-func createAddOp(operation map[string]JSON) (interface{}, error) {
+func createAddOp(operation map[string]JSON) (*OpAdd, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
 		return nil, ErrOperationMissingPath
@@ -121,5 +133,48 @@ func createAddOp(operation map[string]JSON) (interface{}, error) {
 	if !ok {
 		return nil, ErrOperationMissingValue
 	}
-	return OpAdd{path: path, value: value}, nil
+	op := OpAdd{operation: operation, path: path, value: value}
+	return &op, nil
+}
+
+func createReplaceOp(operation map[string]JSON) (*OpReplace, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	value, ok := operation["value"]
+	if !ok {
+		return nil, ErrOperationMissingValue
+	}
+	op := OpReplace{operation: operation, path: path, value: value}
+	return &op, nil
+}
+
+func createTestOp(operation map[string]JSON) (*OpTest, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationMissingPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	value, ok := operation["value"]
+	if !ok {
+		return nil, ErrOperationMissingValue
+	}
+	op := OpTest{operation: operation, path: path, value: value}
+	return &op, nil
 }

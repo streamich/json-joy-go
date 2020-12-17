@@ -117,11 +117,47 @@ func Test_JsonPatchOperations_CreateOps_ReturnsAddOpOnSuccess(t *testing.T) {
 	assert.Equal(t, -1, index)
 	assert.NotNil(t, ops)
 	assert.Equal(t, 1, len(ops))
-	op, ok := ops[0].(OpAdd)
+	op, ok := ops[0].(*OpAdd)
 	assert.Equal(t, true, ok)
 	assert.Equal(t, 3, len(op.path))
 	assert.Equal(t, "foo", op.path[0])
 	assert.Equal(t, "bar", op.path[1])
 	assert.Equal(t, "baz", op.path[2])
 	assert.Equal(t, "map[a:b]", fmt.Sprint(op.value))
+}
+
+func Test_JsonPatchOperations_CreateOps_CanCreateMultipleOperations(t *testing.T) {
+	b := []byte(`[
+		{"op": "add", "path": "/foo/bar/baz", "value": {"a": "b"}},
+		{"op": "replace", "path": "/a/1", "value": {"a": "c"}},
+		{"op": "test", "path": "", "value": 123}
+	]`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	patch, _ := doc.([]JSON)
+	ops, index, err := CreateOps(patch)
+	assert.Nil(t, err)
+	assert.Equal(t, -1, index)
+	assert.NotNil(t, ops)
+	assert.Equal(t, 3, len(ops))
+
+	op1, ok1 := ops[0].(*OpAdd)
+	assert.Equal(t, true, ok1)
+	assert.Equal(t, 3, len(op1.path))
+	assert.Equal(t, "foo", op1.path[0])
+	assert.Equal(t, "bar", op1.path[1])
+	assert.Equal(t, "baz", op1.path[2])
+	assert.Equal(t, "map[a:b]", fmt.Sprint(op1.value))
+
+	op2, ok2 := ops[1].(*OpReplace)
+	assert.Equal(t, true, ok2)
+	assert.Equal(t, 2, len(op2.path))
+	assert.Equal(t, "a", op2.path[0])
+	assert.Equal(t, "1", op2.path[1])
+	assert.Equal(t, "map[a:c]", fmt.Sprint(op2.value))
+
+	op3, ok3 := ops[2].(*OpTest)
+	assert.Equal(t, true, ok3)
+	assert.Equal(t, 0, len(op3.path))
+	assert.Equal(t, 123.0, op3.value)
 }
