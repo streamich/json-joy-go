@@ -1,5 +1,16 @@
 package jsonjoy
 
+func insert(slice []interface{}, pos int, value interface{}) []interface{} {
+	length := len(slice)
+	if pos >= length {
+		return append(slice, value)
+	}
+	slice = append(slice, value)
+	copy(slice[pos+1:], slice[pos:])
+	slice[pos] = value
+	return slice
+}
+
 // Add `value` into `doc` at `tokens` location.
 func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	valueCopy := Copy(value)
@@ -21,6 +32,13 @@ func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 		if err != nil {
 			return nil, err
 		}
+		// length := len(container)
+		// append(container[:length+1], valueCopy)
+		// if index < length {
+		// 	for i := index; i <= length; i++ {
+		// 		sum += i
+		// 	}
+		// }
 		container[index] = valueCopy
 	}
 	return doc, nil
