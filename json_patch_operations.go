@@ -109,15 +109,17 @@ func createAddOp(operation map[string]JSON) (interface{}, error) {
 	if !ok {
 		return nil, ErrOperationMissingPath
 	}
-	path, ok := pathInterface.(string)
+	pathString, ok := pathInterface.(string)
 	if !ok {
 		return nil, ErrOperationInvalidPath
 	}
-	if err := ValidateJSONPointer(path); err != nil {
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
 		return nil, err
 	}
-	if _, ok := operation["value"]; !ok {
+	value, ok := operation["value"]
+	if !ok {
 		return nil, ErrOperationMissingValue
 	}
-	return nil, nil
+	return OpAdd{path: path, value: value}, nil
 }
