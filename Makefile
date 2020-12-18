@@ -5,12 +5,12 @@ clean:
 	@echo ">> cleaning..."
 	@rm -rf build/
 
-build/json-pointer: clean build/json-pointer
+build/json-pointer: clean
 	@echo ">> building..."
 	@echo "Commit: $(COMMIT_ID)"
 	@echo "Version: $(VERSION)"
-	@ mkdir -p build
-	@cd cli && go build -ldflags "-X main.Version=$(VERSION) -X main.CommitId=$(COMMIT_ID)" -o ../build/json-pointer
+	@mkdir -p build
+	@cd cli/json-pointer && go build -o ../../build/json-pointer
 
 .PHONY: test
 test:
