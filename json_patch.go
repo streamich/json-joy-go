@@ -155,6 +155,15 @@ func Move(doc *JSON, from JSONPointer, to JSONPointer) error {
 	return Add(doc, to, value)
 }
 
+// JSONPatchCopy executs JSON Patch "copy" operation.
+func JSONPatchCopy(doc *JSON, from JSONPointer, to JSONPointer) error {
+	value, err := from.Get(*doc)
+	if err != nil {
+		return err
+	}
+	return Add(doc, to, Copy(value))
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
@@ -165,6 +174,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpRemove:
 		return op.apply(doc)
 	case *OpMove:
+		return op.apply(doc)
+	case *OpCopy:
 		return op.apply(doc)
 	}
 	return nil
@@ -197,5 +208,10 @@ func (op *OpRemove) apply(doc *JSON) error {
 
 func (op *OpMove) apply(doc *JSON) error {
 	err := Move(doc, op.from, op.path)
+	return err
+}
+
+func (op *OpCopy) apply(doc *JSON) error {
+	err := JSONPatchCopy(doc, op.from, op.path)
 	return err
 }
