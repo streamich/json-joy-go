@@ -112,34 +112,38 @@ func Replace(doc *JSON, tokens JSONPointer, value JSON) error {
 }
 
 // Remove removes a value from JSON document.
-func Remove(doc *JSON, tokens JSONPointer) error {
+func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 	if tokens.IsRoot() {
-		return nil
+		return *doc, nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
 	obj, err := parentTokens.Find(doc)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	key := tokens[len(tokens)-1]
 	objInterface := *obj
 	switch container := objInterface.(type) {
 	case map[string]JSON:
-		if _, ok := container[key]; !ok {
-			return ErrNotFound
+		value, ok := container[key]
+		if !ok {
+			return nil, ErrNotFound
 		}
 		delete(container, key)
+		return value, nil
 	case []JSON:
 		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if index >= len(container) {
-			return ErrNotFound
+			return nil, ErrNotFound
 		}
+		value := container[index]
 		container = append(container[:index], container[index+1:]...)
+		return value, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // ApplyOperation applies a single operation.
@@ -176,5 +180,6 @@ func (op *OpReplace) apply(doc *JSON) error {
 }
 
 func (op *OpRemove) apply(doc *JSON) error {
-	return Remove(doc, op.path)
+	_, err := Remove(doc, op.path)
+	return err
 }
