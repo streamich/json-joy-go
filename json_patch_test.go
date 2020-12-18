@@ -137,3 +137,20 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.
 	assert.Equal(t, "[]", fmt.Sprint(doc))
 	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
 }
+
+func Test_JsonPatch_ApplyOps_AppliesAddOperations(t *testing.T) {
+	b1 := []byte(`{
+		"foo": "bar"
+	}`)
+	b2 := []byte(`[
+		{"op": "replace", "path": "/foo", "value": "baz"},
+		{"op": "add", "path": "/gg", "value": [123]}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	doc2, _ := ApplyOps(doc, ops)
+	fmt.Println(doc2)
+}
