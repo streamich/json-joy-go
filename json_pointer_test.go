@@ -325,6 +325,103 @@ func Test_JSONPointer_Get_ReturnsJSONValuesOfVariousTypes(t *testing.T) {
 	assert.Equal(t, true, val)
 }
 
+func Test_JSONPointer_Find_ReturnsRootDocument(t *testing.T) {
+	tokens := JSONPointer{}
+	b := []byte(`{"foo": "bar"}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	value, err := tokens.Find(&doc)
+	assert.Nil(t, err)
+	assert.Equal(t, *value, doc)
+}
+
+func Test_JSONPointer_Find_ReturnsJSONValuesOfVariousTypes(t *testing.T) {
+	b := []byte(`{
+		"a": null,
+		"b": false,
+		"c": true,
+		"d": 0,
+		"e": 1.1,
+		"f": "",
+		"g": "asdf",
+		"h": [],
+		"i": [null, false, true, -1, 3.4, "", "foo", [], {}],
+		"j": {
+			"a": null,
+			"b": false,
+			"c": true,
+			"d": 0,
+			"e": 1.1,
+			"f": "",
+			"g": "asdf",
+			"h": [],
+			"i": [null, false, true, -1, 3.4, "", "foo", [], {
+				"a": null,
+				"b": false,
+				"c": true,
+				"d": 0,
+				"e": 1.1,
+				"f": "",
+				"g": "asdf",
+				"h": [],
+				"i": [null, false, true, -1, 3.4, "", "foo", [], {}]
+			}]
+		}
+	}`)
+	var doc interface{}
+	json.Unmarshal(b, &doc)
+	val, _ := (JSONPointer{"a"}).Find(&doc)
+	assert.Equal(t, nil, *val)
+	val, _ = (JSONPointer{"b"}).Find(&doc)
+	assert.Equal(t, false, *val)
+	val, _ = (JSONPointer{"c"}).Find(&doc)
+	assert.Equal(t, true, *val)
+	val, _ = (JSONPointer{"d"}).Find(&doc)
+	assert.Equal(t, 0.0, *val)
+	val, _ = (JSONPointer{"e"}).Find(&doc)
+	assert.Equal(t, 1.1, *val)
+	val, _ = (JSONPointer{"f"}).Find(&doc)
+	assert.Equal(t, "", *val)
+	val, _ = (JSONPointer{"g"}).Find(&doc)
+	assert.Equal(t, "asdf", *val)
+	val, _ = (JSONPointer{"h"}).Find(&doc)
+	assert.Equal(t, "[]", fmt.Sprint(*val))
+	val, _ = (JSONPointer{"i", "0"}).Find(&doc)
+	assert.Equal(t, nil, *val)
+	val, _ = (JSONPointer{"i", "1"}).Find(&doc)
+	assert.Equal(t, false, *val)
+	val, _ = (JSONPointer{"i", "2"}).Find(&doc)
+	assert.Equal(t, true, *val)
+	val, _ = (JSONPointer{"i", "3"}).Find(&doc)
+	assert.Equal(t, -1.0, *val)
+	val, _ = (JSONPointer{"i", "4"}).Find(&doc)
+	assert.Equal(t, 3.4, *val)
+	val, _ = (JSONPointer{"i", "5"}).Find(&doc)
+	assert.Equal(t, "", *val)
+	val, _ = (JSONPointer{"i", "6"}).Find(&doc)
+	assert.Equal(t, "foo", *val)
+	val, _ = (JSONPointer{"i", "7"}).Find(&doc)
+	assert.Equal(t, "[]", fmt.Sprint(*val))
+	val, _ = (JSONPointer{"j", "a"}).Find(&doc)
+	assert.Equal(t, nil, *val)
+	val, _ = (JSONPointer{"j", "b"}).Find(&doc)
+	assert.Equal(t, false, *val)
+	val, _ = (JSONPointer{"j", "c"}).Find(&doc)
+	assert.Equal(t, true, *val)
+	val, _ = (JSONPointer{"j", "d"}).Find(&doc)
+	assert.Equal(t, 0.0, *val)
+	val, _ = (JSONPointer{"j", "e"}).Find(&doc)
+	assert.Equal(t, 1.1, *val)
+	val, _ = (JSONPointer{"j", "f"}).Find(&doc)
+	assert.Equal(t, "", *val)
+	val, _ = (JSONPointer{"j", "g"}).Find(&doc)
+	assert.Equal(t, "asdf", *val)
+	val, _ = (JSONPointer{"j", "h"}).Find(&doc)
+	assert.Equal(t, "[]", fmt.Sprint(*val))
+	val, _ = (JSONPointer{"j", "i", "8", "i", "2"}).Find(&doc)
+	assert.Equal(t, true, *val)
+}
+
 func Test_JSONPointer_Resolve_ReturnsNilForDocumentRoot(t *testing.T) {
 	tokens := JSONPointer{}
 	b := []byte(`{"foo": "bar"}`)

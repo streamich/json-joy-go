@@ -130,6 +130,35 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 	return doc, nil
 }
 
+// Find locates the value identified by JSON Pointer.
+func (tokens JSONPointer) Find(doc *JSON) (*JSON, error) {
+	if tokens.IsRoot() {
+		return doc, nil
+	}
+	var key string
+	for _, token := range tokens {
+		key = token
+		docInterface := *doc
+		switch typedParent := docInterface.(type) {
+		case map[string]JSON:
+			if child, ok := typedParent[key]; ok {
+				doc = &child
+				continue
+			}
+			return nil, ErrNotFound
+		case []JSON:
+			tokenIndex, err := ParseTokenAsArrayIndex(token, len(typedParent)-1)
+			if err != nil {
+				return nil, err
+			}
+			doc = &typedParent[tokenIndex]
+		default:
+			return nil, ErrNotFound
+		}
+	}
+	return doc, nil
+}
+
 // Resolve all values of a JSON document on the path of a JSON Pointer. Each
 // entry in the return list corresponds to a JSON Pointer token reference
 // with the same index. Returns nil if the JSON Pointer points to root.
