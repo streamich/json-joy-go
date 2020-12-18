@@ -1,5 +1,10 @@
 package jsonjoy
 
+import "errors"
+
+// ErrTest is returned when JSON Patch "error" operations was not passed.
+var ErrTest = errors.New("TEST")
+
 // Inserts an element into a slice and shifts needed elements to right.
 func insert(slice []interface{}, pos int, value interface{}) []interface{} {
 	length := len(slice)
@@ -164,6 +169,18 @@ func JSONPatchCopy(doc *JSON, from JSONPointer, to JSONPointer) error {
 	return Add(doc, to, Copy(value))
 }
 
+// JSONPatchTest executes JSON Patch "test" operation.
+func JSONPatchTest(doc *JSON, path JSONPointer, value JSON) error {
+	target, err := path.Find(doc)
+	if err != nil {
+		return err
+	}
+	if !DeepEqual(value, target) {
+		return ErrTest
+	}
+	return nil
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
@@ -177,6 +194,11 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 		return op.apply(doc)
 	case *OpCopy:
 		return op.apply(doc)
+	case *OpTest:
+		err := op.apply(doc)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -213,5 +235,10 @@ func (op *OpMove) apply(doc *JSON) error {
 
 func (op *OpCopy) apply(doc *JSON) error {
 	err := JSONPatchCopy(doc, op.from, op.path)
+	return err
+}
+
+func (op *OpTest) apply(doc *JSON) error {
+	err := JSONPatchTest(doc, op.path, op.value)
 	return err
 }
