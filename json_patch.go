@@ -146,6 +146,15 @@ func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 	return nil, nil
 }
 
+// Move executes JSON Patch "move" operation.
+func Move(doc *JSON, from JSONPointer, to JSONPointer) error {
+	value, err := Remove(doc, from)
+	if err != nil {
+		return err
+	}
+	return Add(doc, to, value)
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
@@ -154,6 +163,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpReplace:
 		return op.apply(doc)
 	case *OpRemove:
+		return op.apply(doc)
+	case *OpMove:
 		return op.apply(doc)
 	}
 	return nil
@@ -181,5 +192,10 @@ func (op *OpReplace) apply(doc *JSON) error {
 
 func (op *OpRemove) apply(doc *JSON) error {
 	_, err := Remove(doc, op.path)
+	return err
+}
+
+func (op *OpMove) apply(doc *JSON) error {
+	err := Move(doc, op.from, op.path)
 	return err
 }

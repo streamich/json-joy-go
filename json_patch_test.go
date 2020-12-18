@@ -157,3 +157,19 @@ func Test_JsonPatch_ApplyOps_AppliesRemoveOperation(t *testing.T) {
 	ApplyOps(&doc, ops)
 	assert.Equal(t, "map[baz:qux]", fmt.Sprint(doc))
 }
+
+func Test_JsonPatch_ApplyOps_AppliesMoveOperation(t *testing.T) {
+	b1 := []byte(`{
+		"foo": "bar"
+	}`)
+	b2 := []byte(`[
+		{"op": "move", "path": "/a", "from": "/foo"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	ApplyOps(&doc, ops)
+	assert.Equal(t, "map[a:bar]", fmt.Sprint(doc))
+}
