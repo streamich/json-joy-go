@@ -18,10 +18,10 @@ const (
 type JSONPointer []string
 
 // ErrNotFound is returned when JSONPointer.Find cannot locate a value.
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = errors.New("NOT_FOUND")
 
 // ErrInvalidIndex is returned when JSON Pointer array index is not valid.
-var ErrInvalidIndex = errors.New("invalid index")
+var ErrInvalidIndex = errors.New("INVALID_INDEX")
 
 // UnescapeReferenceToken decodes a single JSON Pointer reference token.
 func UnescapeReferenceToken(token string) string {

@@ -32,7 +32,7 @@ func main() {
 
 	value, err := tokens.Get(doc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
