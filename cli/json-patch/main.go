@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	os.Stdout.Write("not implemented")
+	os.Stdout.Write([]byte("not implemented"))
 	os.Stdout.WriteString("\n")
 }
