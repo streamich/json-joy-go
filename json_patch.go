@@ -37,8 +37,62 @@ func putKey(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	return doc, nil
 }
 
-func updateKey(container JSON, key string, value JSON) error {
-	switch container := container.(type) {
+// Add `value` into `doc` at `tokens` location. `doc` and `value` params can
+// be mutated, you need to clone them using `Copy` manually.
+func Add(doc *JSON, tokens JSONPointer, value JSON) error {
+	if tokens.IsRoot() {
+		*doc = value
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	containerPointer, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	containerInterface := *containerPointer
+	switch container := containerInterface.(type) {
+	case map[string]JSON:
+		container[key] = value
+	case []JSON:
+		var index int = 0
+		if key == "-" {
+			index = len(container)
+		} else {
+			parsedIndex, err := ParseTokenAsArrayIndex(key, len(container))
+			if err != nil {
+				return err
+			}
+			index = parsedIndex
+		}
+		arr := insert(container, index, value)
+		if len(tokens) == 1 {
+			*doc = arr
+			return nil
+		}
+		doc2, err := putKey(*doc, parentTokens, arr)
+		if err != nil {
+			return err
+		}
+		*doc = doc2
+	}
+	return nil
+}
+
+// Replace `value` into `doc` at `tokens` location. `doc` and `value` params can
+// be mutated, you need to clone them using `Copy` manually.
+func Replace(doc *JSON, tokens JSONPointer, value JSON) error {
+	if tokens.IsRoot() {
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
 	case map[string]JSON:
 		if _, ok := container[key]; !ok {
 			return ErrNotFound
@@ -57,93 +111,39 @@ func updateKey(container JSON, key string, value JSON) error {
 	return nil
 }
 
-func removeKey(container *JSON, key string) error {
-	containerValue := *container
-	switch obj := containerValue.(type) {
+// Remove removes a value from JSON document.
+func Remove(doc *JSON, tokens JSONPointer) error {
+	if tokens.IsRoot() {
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
 	case map[string]JSON:
-		if _, ok := obj[key]; !ok {
+		if _, ok := container[key]; !ok {
 			return ErrNotFound
 		}
-		delete(obj, key)
+		delete(container, key)
 	case []JSON:
-		index, err := ParseTokenAsArrayIndex(key, len(obj)-1)
+		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
 		if err != nil {
 			return err
 		}
-		if index >= len(obj) {
+		if index >= len(container) {
 			return ErrNotFound
 		}
-		containerValue = append(obj[:index], obj[index+1:]...)
+		container = append(container[:index], container[index+1:]...)
 	}
 	return nil
 }
 
-// Add `value` into `doc` at `tokens` location. `doc` and `value` params can
-// be mutated, you need to clone them using `Copy` manually.
-func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
-	if tokens.IsRoot() {
-		return value, nil
-	}
-	parentTokens := tokens[:len(tokens)-1]
-	container, err := parentTokens.Get(doc)
-	if err != nil {
-		return nil, err
-	}
-	key := tokens[len(tokens)-1]
-	switch container := container.(type) {
-	case map[string]JSON:
-		container[key] = value
-	case []JSON:
-		var index int = 0
-		if key == "-" {
-			index = len(container)
-		} else {
-			parsedIndex, err := ParseTokenAsArrayIndex(key, len(container))
-			if err != nil {
-				return nil, err
-			}
-			index = parsedIndex
-		}
-		container = insert(container, index, value)
-		if len(tokens) == 1 {
-			return container, nil
-		}
-		return putKey(doc, parentTokens, container)
-	}
-	return doc, nil
-}
-
-// Replace `value` into `doc` at `tokens` location. `doc` and `value` params can
-// be mutated, you need to clone them using `Copy` manually.
-func Replace(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
-	if tokens.IsRoot() {
-		return value, nil
-	}
-	parentTokens := tokens[:len(tokens)-1]
-	container, err := parentTokens.Get(doc)
-	if err != nil {
-		return nil, err
-	}
-	key := tokens[len(tokens)-1]
-	return doc, updateKey(container, key, value)
-}
-
-// Remove removes a value from JSON document.
-func Remove(doc JSON, tokens JSONPointer) (JSON, error) {
-	if tokens.IsRoot() {
-		return nil, nil
-	}
-	parentTokens := tokens[:len(tokens)-1]
-	container, err := parentTokens.Get(doc)
-	if err != nil {
-		return nil, err
-	}
-	key := tokens[len(tokens)-1]
-	return doc, removeKey(&container, key)
-}
-
 // ApplyOperation applies a single operation.
-func ApplyOperation(doc JSON, operation interface{}) (JSON, error) {
+func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
 	case *OpAdd:
 		return op.apply(doc)
@@ -152,30 +152,29 @@ func ApplyOperation(doc JSON, operation interface{}) (JSON, error) {
 	case *OpRemove:
 		return op.apply(doc)
 	}
-	return doc, nil
+	return nil
 }
 
 // ApplyOps applies a JSON Patch to the document.
-func ApplyOps(doc JSON, operations []interface{}) (JSON, error) {
-	doc2 := Copy(doc)
+func ApplyOps(doc *JSON, operations []interface{}) error {
 	for _, operation := range operations {
 		var err error
-		doc2, err = ApplyOperation(doc2, operation)
+		err = ApplyOperation(doc, operation)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return doc2, nil
+	return nil
 }
 
-func (op *OpAdd) apply(doc JSON) (JSON, error) {
+func (op *OpAdd) apply(doc *JSON) error {
 	return Add(doc, op.path, Copy(op.value))
 }
 
-func (op *OpReplace) apply(doc JSON) (JSON, error) {
+func (op *OpReplace) apply(doc *JSON) error {
 	return Replace(doc, op.path, Copy(op.value))
 }
 
-func (op *OpRemove) apply(doc JSON) (JSON, error) {
+func (op *OpRemove) apply(doc *JSON) error {
 	return Remove(doc, op.path)
 }

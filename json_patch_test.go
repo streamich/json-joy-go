@@ -60,23 +60,13 @@ func Test_JsonPatch_insert_CanInsertIntoEmptyArray(t *testing.T) {
 	assert.Equal(t, "[abcd]", fmt.Sprint(newSlice))
 }
 
-func Test_JsonPatch_Add_CanModifyKeyValue(t *testing.T) {
-	b := []byte(`{"foo":"bar"}`)
-	var doc interface{}
-	json.Unmarshal(b, &doc)
-	doc2, _ := Add(doc, JSONPointer{"foo"}, "baz")
-	assert.Equal(t, "map[foo:baz]", fmt.Sprint(doc))
-	assert.Equal(t, "map[foo:baz]", fmt.Sprint(doc2))
-}
-
 func Test_JsonPatch_Add_CanModifyKeyValueWithoutModifyingOriginal(t *testing.T) {
 	b := []byte(`{"foo":"bar"}`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"foo"}, "baz")
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"foo"}, "baz")
 	assert.Equal(t, "map[foo:bar]", fmt.Sprint(doc))
-	assert.Equal(t, "map[foo:baz]", fmt.Sprint(doc1))
 	assert.Equal(t, "map[foo:baz]", fmt.Sprint(doc2))
 }
 
@@ -84,10 +74,9 @@ func Test_JsonPatch_Add_CanInsertItemIntoAnArray(t *testing.T) {
 	b := []byte(`[1, 2]`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"1"}, 3)
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"1"}, 3)
 	assert.Equal(t, "[1 2]", fmt.Sprint(doc))
-	assert.Equal(t, "[1 2]", fmt.Sprint(doc1))
 	assert.Equal(t, "[1 3 2]", fmt.Sprint(doc2))
 }
 
@@ -95,10 +84,9 @@ func Test_JsonPatch_Add_CanInsertItemIntoAnArrayAtSecondLevel(t *testing.T) {
 	b := []byte(`{"a": [1, 2]}`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"a", "1"}, 3)
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"a", "1"}, 3)
 	assert.Equal(t, "map[a:[1 2]]", fmt.Sprint(doc))
-	assert.Equal(t, "map[a:[1 3 2]]", fmt.Sprint(doc1))
 	assert.Equal(t, "map[a:[1 3 2]]", fmt.Sprint(doc2))
 }
 
@@ -106,10 +94,9 @@ func Test_JsonPatch_Add_CanInsertItemIntoAnEmptyArray(t *testing.T) {
 	b := []byte(`{"a": []}`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"a", "0"}, "asdf")
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"a", "0"}, "asdf")
 	assert.Equal(t, "map[a:[]]", fmt.Sprint(doc))
-	assert.Equal(t, "map[a:[asdf]]", fmt.Sprint(doc1))
 	assert.Equal(t, "map[a:[asdf]]", fmt.Sprint(doc2))
 }
 
@@ -117,12 +104,11 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArray(t *testing.T) {
 	b := []byte(`{"a": []}`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"a", "-"}, 3)
-	doc2, _ = Add(doc2, JSONPointer{"a", "-"}, 4)
-	doc2, _ = Add(doc2, JSONPointer{"a", "-"}, 5)
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"a", "-"}, 3)
+	Add(&doc2, JSONPointer{"a", "-"}, 4)
+	Add(&doc2, JSONPointer{"a", "-"}, 5)
 	assert.Equal(t, "map[a:[]]", fmt.Sprint(doc))
-	assert.Equal(t, "map[a:[3 4 5]]", fmt.Sprint(doc1))
 	assert.Equal(t, "map[a:[3 4 5]]", fmt.Sprint(doc2))
 }
 
@@ -130,10 +116,10 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.
 	b := []byte(`[]`)
 	var doc JSON
 	json.Unmarshal(b, &doc)
-	doc1 := Copy(doc)
-	doc2, _ := Add(doc1, JSONPointer{"-"}, 1)
-	doc2, _ = Add(doc2, JSONPointer{"-"}, 1)
-	doc2, _ = Add(doc2, JSONPointer{"-"}, 2)
+	doc2 := Copy(doc)
+	Add(&doc2, JSONPointer{"-"}, 1)
+	Add(&doc2, JSONPointer{"-"}, 1)
+	Add(&doc2, JSONPointer{"-"}, 2)
 	assert.Equal(t, "[]", fmt.Sprint(doc))
 	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
 }
@@ -145,14 +131,14 @@ func Test_JsonPatch_ApplyOps_AppliesOperations(t *testing.T) {
 	b2 := []byte(`[
 		{"op": "replace", "path": "/foo", "value": "baz"},
 		{"op": "add", "path": "/gg", "value": [123]}
-	]`)
+		]`)
 	var doc interface{}
 	var patch interface{}
 	json.Unmarshal(b1, &doc)
 	json.Unmarshal(b2, &patch)
 	ops, _, _ := CreateOps(patch)
-	doc2, _ := ApplyOps(doc, ops)
-	assert.Equal(t, "map[foo:baz gg:[123]]", fmt.Sprint(doc2))
+	ApplyOps(&doc, ops)
+	assert.Equal(t, "map[foo:baz gg:[123]]", fmt.Sprint(doc))
 }
 
 func Test_JsonPatch_ApplyOps_AppliesRemoveOperation(t *testing.T) {
@@ -168,6 +154,6 @@ func Test_JsonPatch_ApplyOps_AppliesRemoveOperation(t *testing.T) {
 	json.Unmarshal(b1, &doc)
 	json.Unmarshal(b2, &patch)
 	ops, _, _ := CreateOps(patch)
-	doc2, _ := ApplyOps(doc, ops)
-	assert.Equal(t, "map[baz:qux]", fmt.Sprint(doc2))
+	ApplyOps(&doc, ops)
+	assert.Equal(t, "map[baz:qux]", fmt.Sprint(doc))
 }
