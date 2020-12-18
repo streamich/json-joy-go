@@ -138,7 +138,7 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.
 	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
 }
 
-func Test_JsonPatch_ApplyOps_AppliesAddOperations(t *testing.T) {
+func Test_JsonPatch_ApplyOps_AppliesOperations(t *testing.T) {
 	b1 := []byte(`{
 		"foo": "bar"
 	}`)
@@ -152,5 +152,22 @@ func Test_JsonPatch_ApplyOps_AppliesAddOperations(t *testing.T) {
 	json.Unmarshal(b2, &patch)
 	ops, _, _ := CreateOps(patch)
 	doc2, _ := ApplyOps(doc, ops)
-	fmt.Println(doc2)
+	assert.Equal(t, "map[foo:baz gg:[123]]", fmt.Sprint(doc2))
+}
+
+func Test_JsonPatch_ApplyOps_AppliesRemoveOperation(t *testing.T) {
+	b1 := []byte(`{
+		"foo": "bar",
+		"baz": "qux"
+	}`)
+	b2 := []byte(`[
+		{"op": "remove", "path": "/foo"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	doc2, _ := ApplyOps(doc, ops)
+	assert.Equal(t, "map[baz:qux]", fmt.Sprint(doc2))
 }

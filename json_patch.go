@@ -57,6 +57,27 @@ func updateKey(container JSON, key string, value JSON) error {
 	return nil
 }
 
+func removeKey(container *JSON, key string) error {
+	containerValue := *container
+	switch obj := containerValue.(type) {
+	case map[string]JSON:
+		if _, ok := obj[key]; !ok {
+			return ErrNotFound
+		}
+		delete(obj, key)
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(obj)-1)
+		if err != nil {
+			return err
+		}
+		if index >= len(obj) {
+			return ErrNotFound
+		}
+		containerValue = append(obj[:index], obj[index+1:]...)
+	}
+	return nil
+}
+
 // Add `value` into `doc` at `tokens` location. `doc` and `value` params can
 // be mutated, you need to clone them using `Copy` manually.
 func Add(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
@@ -107,12 +128,28 @@ func Replace(doc JSON, tokens JSONPointer, value JSON) (JSON, error) {
 	return doc, updateKey(container, key, value)
 }
 
+// Remove removes a value from JSON document.
+func Remove(doc JSON, tokens JSONPointer) (JSON, error) {
+	if tokens.IsRoot() {
+		return nil, nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	container, err := parentTokens.Get(doc)
+	if err != nil {
+		return nil, err
+	}
+	key := tokens[len(tokens)-1]
+	return doc, removeKey(&container, key)
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc JSON, operation interface{}) (JSON, error) {
 	switch op := operation.(type) {
 	case *OpAdd:
 		return op.apply(doc)
 	case *OpReplace:
+		return op.apply(doc)
+	case *OpRemove:
 		return op.apply(doc)
 	}
 	return doc, nil
@@ -137,4 +174,8 @@ func (op *OpAdd) apply(doc JSON) (JSON, error) {
 
 func (op *OpReplace) apply(doc JSON) (JSON, error) {
 	return Replace(doc, op.path, Copy(op.value))
+}
+
+func (op *OpRemove) apply(doc JSON) (JSON, error) {
+	return Remove(doc, op.path)
 }
