@@ -24,3 +24,60 @@ func Copy(value JSON) JSON {
 		return value
 	}
 }
+
+// DeepEqual verifies if two un-marshalled JSON objects are deeply equal.
+func DeepEqual(a, b JSON) bool {
+	switch x := a.(type) {
+	case map[string]JSON:
+		y, ok := b.(map[string]JSON)
+		if !ok {
+			return false
+		}
+		if len(x) != len(y) {
+			return false
+		}
+		for key, value := range x {
+			value2, ok := y[key]
+			if !ok {
+				return false
+			}
+			if !DeepEqual(value, value2) {
+				return false
+			}
+		}
+		return true
+	case []JSON:
+		y, ok := b.([]JSON)
+		if !ok {
+			return false
+		}
+		if len(x) != len(y) {
+			return false
+		}
+		for index, value := range x {
+			if !DeepEqual(value, y[index]) {
+				return false
+			}
+		}
+		return true
+	case float64:
+		y, ok := b.(float64)
+		if !ok {
+			return false
+		}
+		return x == y
+	case bool:
+		y, ok := b.(bool)
+		if !ok {
+			return false
+		}
+		return (x && y) || (!x && !y)
+	case string:
+		y, ok := b.(string)
+		if !ok {
+			return false
+		}
+		return x == y
+	}
+	return (a == nil) && (b == nil)
+}
