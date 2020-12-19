@@ -204,10 +204,10 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 }
 
 // ApplyOps applies a JSON Patch to the document.
-func ApplyOps(doc *JSON, operations []interface{}) error {
-	for _, operation := range operations {
+func ApplyOps(doc *JSON, ops []interface{}) error {
+	for _, op := range ops {
 		var err error
-		err = ApplyOperation(doc, operation)
+		err = ApplyOperation(doc, op)
 		if err != nil {
 			return err
 		}
