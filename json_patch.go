@@ -122,6 +122,7 @@ func Replace(doc *JSON, tokens JSONPointer, value JSON) error {
 // Remove removes a value from JSON document.
 func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 	if tokens.IsRoot() {
+		*doc = nil
 		return *doc, nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
@@ -140,7 +141,7 @@ func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 		delete(container, key)
 		return value, nil
 	case []JSON:
-		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		index, err := ParseTokenAsArrayIndex(key, -1)
 		if err != nil {
 			return nil, err
 		}
