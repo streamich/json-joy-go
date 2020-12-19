@@ -61,9 +61,9 @@ func CreateOps(patch JSON) ([]interface{}, int, error) {
 		return nil, -1, ErrPatchInvalid
 	}
 	length := len(arr)
-	if length == 0 {
-		return nil, -1, ErrPatchEmpty
-	}
+	// if length == 0 {
+	// 	return nil, -1, ErrPatchEmpty
+	// }
 	ops := make([]interface{}, length)
 	for index, operation := range arr {
 		op, err := CreateOp(operation)
