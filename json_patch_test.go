@@ -47,10 +47,12 @@ var b2 = []byte(`[
     ]`)
 var doc interface{}
 var patch interface{}
+var ops []interface{}
 
 func TestMain(m *testing.M) {
 	json.Unmarshal(b1, &doc)
 	json.Unmarshal(b2, &patch)
+	ops, _, _ = CreateOps(patch)
 
 	code := m.Run()
 	os.Exit(code)
@@ -325,6 +327,12 @@ func Test_JsonPatch_ApplyOps_CanInsertTextIntoTextCell(t *testing.T) {
 func Benchmark_JsonPatch_ApplyOps_1(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		ops, _, _ := CreateOps(patch)
+		ApplyOps(&doc, ops)
+	}
+}
+
+func Benchmark_JsonPatch_ApplyOps_2(b *testing.B) {
+	for n := 0; n < b.N; n++ {
 		ApplyOps(&doc, ops)
 	}
 }
