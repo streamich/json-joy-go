@@ -124,6 +124,16 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.
 	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
 }
 
+func Test_JsonPatch_Add_ReturnsErrorWhenInsertingPastArrayLength(t *testing.T) {
+	b := []byte(`[]`)
+	var doc JSON
+	json.Unmarshal(b, &doc)
+	doc2 := Copy(doc)
+	err := Add(&doc2, JSONPointer{"1"}, nil)
+	assert.Equal(t, "[]", fmt.Sprint(doc))
+	assert.Equal(t, "INVALID_INDEX", fmt.Sprint(err))
+}
+
 func Test_JsonPatch_ApplyOps_AppliesOperations(t *testing.T) {
 	b1 := []byte(`{
 		"foo": "bar"

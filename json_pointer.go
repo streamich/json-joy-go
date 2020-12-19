@@ -68,7 +68,7 @@ func NewJSONPointer(str string) (JSONPointer, error) {
 }
 
 // ParseTokenAsArrayIndex parses JSON Pointer reference token to an integer,
-// which can be used as array index.
+// which can be used as array index. Set maxIndex to -1 to ignore length check.
 func ParseTokenAsArrayIndex(token string, maxIndex int) (int, error) {
 	index, err := strconv.Atoi(token)
 	if err != nil {
@@ -77,7 +77,7 @@ func ParseTokenAsArrayIndex(token string, maxIndex int) (int, error) {
 	if index < 0 {
 		return 0, ErrInvalidIndex
 	}
-	if maxIndex > 0 {
+	if maxIndex > -1 {
 		if index > maxIndex {
 			return 0, ErrInvalidIndex
 		}
