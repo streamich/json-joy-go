@@ -18,10 +18,10 @@ const (
 type JSONPointer []string
 
 // ErrNotFound is returned when JSONPointer.Find cannot locate a value.
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = errors.New("NOT_FOUND")
 
 // ErrInvalidIndex is returned when JSON Pointer array index is not valid.
-var ErrInvalidIndex = errors.New("invalid index")
+var ErrInvalidIndex = errors.New("INVALID_INDEX")
 
 // UnescapeReferenceToken decodes a single JSON Pointer reference token.
 func UnescapeReferenceToken(token string) string {
@@ -123,6 +123,35 @@ func (tokens JSONPointer) Get(doc JSON) (JSON, error) {
 				return nil, err
 			}
 			doc = typedParent[tokenIndex]
+		default:
+			return nil, ErrNotFound
+		}
+	}
+	return doc, nil
+}
+
+// Find locates the value identified by JSON Pointer.
+func (tokens JSONPointer) Find(doc *JSON) (*JSON, error) {
+	if tokens.IsRoot() {
+		return doc, nil
+	}
+	var key string
+	for _, token := range tokens {
+		key = token
+		docInterface := *doc
+		switch typedParent := docInterface.(type) {
+		case map[string]JSON:
+			if child, ok := typedParent[key]; ok {
+				doc = &child
+				continue
+			}
+			return nil, ErrNotFound
+		case []JSON:
+			tokenIndex, err := ParseTokenAsArrayIndex(token, len(typedParent)-1)
+			if err != nil {
+				return nil, err
+			}
+			doc = &typedParent[tokenIndex]
 		default:
 			return nil, ErrNotFound
 		}

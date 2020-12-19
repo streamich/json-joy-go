@@ -17,14 +17,14 @@ func Test_JsonPatchOperations_CreateOps_ReturnsErrorOnInvalidPatch(t *testing.T)
 	assert.Equal(t, ErrPatchInvalid, err)
 }
 
-func Test_JsonPatchOperations_CreateOps_ReturnsErrorOnEmptyPatch(t *testing.T) {
+func Test_JsonPatchOperations_CreateOps_EmptyPatchIsNotAnError(t *testing.T) {
 	b := []byte(`[]`)
 	var doc interface{}
 	json.Unmarshal(b, &doc)
 	patch, _ := doc.([]JSON)
 	_, index, err := CreateOps(patch)
 	assert.Equal(t, -1, index)
-	assert.Equal(t, ErrPatchEmpty, err)
+	assert.Nil(t, err)
 }
 
 func Test_JsonPatchOperations_CreateOps_ReturnsErrorOnInvalidOperation(t *testing.T) {
