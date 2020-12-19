@@ -74,7 +74,7 @@ func Test_JsonPatchOperations_CreateOps_ReturnsErrorOnMissingPathInAddOperation(
 	patch, _ := doc.([]JSON)
 	_, index, err := CreateOps(patch)
 	assert.Equal(t, 0, index)
-	assert.Equal(t, ErrOperationMissingPath, err)
+	assert.Equal(t, ErrOperationInvalidPath, err)
 }
 
 func Test_JsonPatchOperations_CreateOps_ReturnsErrorOnInvalidAddOperationPath(t *testing.T) {

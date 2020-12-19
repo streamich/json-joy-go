@@ -122,6 +122,7 @@ func Replace(doc *JSON, tokens JSONPointer, value JSON) error {
 // Remove removes a value from JSON document.
 func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 	if tokens.IsRoot() {
+		*doc = nil
 		return *doc, nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
@@ -140,7 +141,7 @@ func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 		delete(container, key)
 		return value, nil
 	case []JSON:
-		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		index, err := ParseTokenAsArrayIndex(key, -1)
 		if err != nil {
 			return nil, err
 		}
@@ -189,6 +190,63 @@ func JSONPatchTest(doc *JSON, path JSONPointer, value JSON) error {
 	return nil
 }
 
+func insertString(src string, pos int, ins string) string {
+	if pos > len(src) {
+		pos = len(src)
+	}
+	return src[:pos] + ins + src[pos:]
+}
+
+// JSONPatchStrIns insert string into an existing string.
+func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
+	if tokens.IsRoot() {
+		str, ok := (*doc).(string)
+		if !ok {
+			return ErrNotAString
+		}
+		*doc = insertString(str, pos, ins)
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	switch container := (*obj).(type) {
+	case map[string]JSON:
+		value, ok := container[key]
+		if !ok {
+			if pos == 0 {
+				container[key] = ""
+				value = ""
+			} else {
+				return errors.New("POS")
+			}
+		}
+		str, ok := value.(string)
+		if !ok {
+			return ErrNotAString
+		}
+		container[key] = insertString(str, pos, ins)
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, -1)
+		if err != nil {
+			return err
+		}
+		if index >= len(container) {
+			return ErrNotFound
+		}
+		value := container[index]
+		str, ok := value.(string)
+		if !ok {
+			return ErrNotAString
+		}
+		container[index] = insertString(str, pos, ins)
+	}
+	return nil
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
@@ -201,6 +259,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpMove:
 		return op.apply(doc)
 	case *OpCopy:
+		return op.apply(doc)
+	case *OpStrIns:
 		return op.apply(doc)
 	case *OpTest:
 		err := op.apply(doc)
@@ -248,5 +308,10 @@ func (op *OpCopy) apply(doc *JSON) error {
 
 func (op *OpTest) apply(doc *JSON) error {
 	err := JSONPatchTest(doc, op.path, op.value)
+	return err
+}
+
+func (op *OpStrIns) apply(doc *JSON) error {
+	err := JSONPatchStrIns(doc, op.path, op.pos, op.str)
 	return err
 }

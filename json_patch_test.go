@@ -3,10 +3,58 @@ package jsonjoy
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var b1 = []byte(`{
+	"foo": {
+	    "bar": 123
+	},
+	"arr": [
+	    1,
+	    {}
+	]
+    }`)
+var b2 = []byte(`[
+	{
+	    "op": "add",
+	    "path": "/foo/baz",
+	    "value": 666
+	},
+	{
+	    "op": "add",
+	    "path": "/foo/bx",
+	    "value": 666
+	},
+	{
+	    "op": "add",
+	    "path": "/asdf",
+	    "value": "asdfadf asdf"
+	},
+	{
+	    "op": "move",
+	    "path": "/arr/0",
+	    "from": "/arr/1"
+	},
+	{
+	    "op": "replace",
+	    "path": "/foo/baz",
+	    "value": "lorem ipsum"
+	}
+    ]`)
+var doc interface{}
+var patch interface{}
+
+func TestMain(m *testing.M) {
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 func Test_JsonPatch_insert_CanInsertIntoMiddleOfSlice(t *testing.T) {
 	b := []byte(`[1, 2]`)
@@ -124,6 +172,16 @@ func Test_JsonPatch_Add_CanInsertItemsAtTheEndOfArrayWhenArrayIsRoot(t *testing.
 	assert.Equal(t, "[1 1 2]", fmt.Sprint(doc2))
 }
 
+func Test_JsonPatch_Add_ReturnsErrorWhenInsertingPastArrayLength(t *testing.T) {
+	b := []byte(`[]`)
+	var doc JSON
+	json.Unmarshal(b, &doc)
+	doc2 := Copy(doc)
+	err := Add(&doc2, JSONPointer{"1"}, nil)
+	assert.Equal(t, "[]", fmt.Sprint(doc))
+	assert.Equal(t, "INVALID_INDEX", fmt.Sprint(err))
+}
+
 func Test_JsonPatch_ApplyOps_AppliesOperations(t *testing.T) {
 	b1 := []byte(`{
 		"foo": "bar"
@@ -229,4 +287,44 @@ func Test_JsonPatch_ApplyOps_TestOperation(t *testing.T) {
 	m := doc.(map[string]interface{})
 	assert.Nil(t, err)
 	assert.Equal(t, "bar", m["foo"])
+}
+
+func Test_JsonPatch_ApplyOps_NotFoundPath(t *testing.T) {
+	b1 := []byte(`{
+		"q": {"bar": 2}
+	}`)
+	b2 := []byte(`[
+		{"op": "add", "path": "/a/b", "value": 1}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Equal(t, "NOT_FOUND", fmt.Sprint(err))
+}
+
+func Test_JsonPatch_ApplyOps_CanInsertTextIntoTextCell(t *testing.T) {
+	b1 := []byte(`{
+		"a": "asdf"
+	}`)
+	b2 := []byte(`[
+		{"op": "str_ins", "path": "/a", "pos": 0, "str": "_"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Nil(t, err)
+	assert.Equal(t, "map[a:_asdf]", fmt.Sprint(doc))
+}
+
+func Benchmark_JsonPatch_ApplyOps_1(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		ops, _, _ := CreateOps(patch)
+		ApplyOps(&doc, ops)
+	}
 }
