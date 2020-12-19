@@ -12,26 +12,26 @@ import (
 func main() {
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Could not read input: %v\n", err)
 		os.Exit(1)
 	}
 
 	var doc interface{}
 	err = json.Unmarshal(bytes, &doc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Invalid input JSON: %v\n", err)
 		os.Exit(1)
 	}
 
 	if (len(os.Args)) < 2 {
-		fmt.Fprintf(os.Stderr, "error: JSON Patch argument not provided")
+		fmt.Fprintf(os.Stderr, "JSON Patch argument not provided")
 		os.Exit(1)
 	}
 
 	var patch interface{}
 	err = json.Unmarshal([]byte(os.Args[1]), &patch)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Invalid patch JSON: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -49,7 +49,7 @@ func main() {
 
 	result, err := json.Marshal(doc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Could not serialize output: %v\n", err)
 		os.Exit(1)
 	}
 

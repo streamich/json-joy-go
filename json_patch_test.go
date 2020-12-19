@@ -230,3 +230,19 @@ func Test_JsonPatch_ApplyOps_TestOperation(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "bar", m["foo"])
 }
+
+func Test_JsonPatch_ApplyOps_NotFoundPath(t *testing.T) {
+	b1 := []byte(`{
+		"q": {"bar": 2}
+	}`)
+	b2 := []byte(`[
+		{"op": "add", "path": "/a/b", "value": 1}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Equal(t, "NOT_FOUND", fmt.Sprint(err))
+}

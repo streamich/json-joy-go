@@ -47,10 +47,10 @@ type OpTest struct {
 }
 
 // ErrPatchInvalid returned when JSON Patch is invalid.
-var ErrPatchInvalid = errors.New("patch invalid")
+var ErrPatchInvalid = errors.New("PATCH_INVALID")
 
 // ErrPatchEmpty returned when JSON Patch array is empty.
-var ErrPatchEmpty = errors.New("patch empty")
+var ErrPatchEmpty = errors.New("PATCH_EMPTY")
 
 // CreateOps validates a list of JSON Patch operations and returns a list of
 // Op* structs. Second return argument integer represents operation in which
@@ -76,10 +76,10 @@ func CreateOps(patch JSON) ([]interface{}, int, error) {
 }
 
 // ErrOperationInvalid returned when JSON Patch operation is invalid.
-var ErrOperationInvalid = errors.New("operation invalid")
+var ErrOperationInvalid = errors.New("OP_INVALID")
 
 // ErrOperationUnknown returned when JSON Patch operation opcode is not recognized.
-var ErrOperationUnknown = errors.New("operation unknown")
+var ErrOperationUnknown = errors.New("OP_UNKNOWN")
 
 // CreateOp validates a single JSON Patch operation.
 func CreateOp(operation JSON) (interface{}, error) {
@@ -113,19 +113,16 @@ func CreateOp(operation JSON) (interface{}, error) {
 	}
 }
 
-// ErrOperationMissingPath returned when JSON Patch operation is missing the "path" field.
-var ErrOperationMissingPath = errors.New("op_missing_path")
-
 // ErrOperationInvalidPath returned when operation "path" field is invalid.
-var ErrOperationInvalidPath = errors.New("op_invalid_path")
+var ErrOperationInvalidPath = errors.New("OP_PATH_INVALID")
 
 // ErrOperationMissingValue returned when operation is missing "value" field.
-var ErrOperationMissingValue = errors.New("op_missing_value")
+var ErrOperationMissingValue = errors.New("OP_VALUE_MISSING")
 
 func createAddOp(operation map[string]JSON) (*OpAdd, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -146,7 +143,7 @@ func createAddOp(operation map[string]JSON) (*OpAdd, error) {
 func createReplaceOp(operation map[string]JSON) (*OpReplace, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -167,7 +164,7 @@ func createReplaceOp(operation map[string]JSON) (*OpReplace, error) {
 func createTestOp(operation map[string]JSON) (*OpTest, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -188,7 +185,7 @@ func createTestOp(operation map[string]JSON) (*OpTest, error) {
 func createRemoveOp(operation map[string]JSON) (*OpRemove, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -202,10 +199,13 @@ func createRemoveOp(operation map[string]JSON) (*OpRemove, error) {
 	return &op, nil
 }
 
+// ErrOperationInvalidFrom returned when operation "path" field is invalid.
+var ErrOperationInvalidFrom = errors.New("OP_FROM_INVALID")
+
 func createMoveOp(operation map[string]JSON) (*OpMove, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -217,11 +217,11 @@ func createMoveOp(operation map[string]JSON) (*OpMove, error) {
 	}
 	fromInterface, ok := operation["from"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidFrom
 	}
 	fromString, ok := fromInterface.(string)
 	if !ok {
-		return nil, ErrOperationInvalidPath
+		return nil, ErrOperationInvalidFrom
 	}
 	from, err := NewJSONPointer(fromString)
 	if err != nil {
@@ -234,7 +234,7 @@ func createMoveOp(operation map[string]JSON) (*OpMove, error) {
 func createCopyOp(operation map[string]JSON) (*OpCopy, error) {
 	pathInterface, ok := operation["path"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidPath
 	}
 	pathString, ok := pathInterface.(string)
 	if !ok {
@@ -246,11 +246,11 @@ func createCopyOp(operation map[string]JSON) (*OpCopy, error) {
 	}
 	fromInterface, ok := operation["from"]
 	if !ok {
-		return nil, ErrOperationMissingPath
+		return nil, ErrOperationInvalidFrom
 	}
 	fromString, ok := fromInterface.(string)
 	if !ok {
-		return nil, ErrOperationInvalidPath
+		return nil, ErrOperationInvalidFrom
 	}
 	from, err := NewJSONPointer(fromString)
 	if err != nil {
