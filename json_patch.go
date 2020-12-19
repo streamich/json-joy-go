@@ -1,6 +1,8 @@
 package jsonjoy
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrTest is returned when JSON Patch "error" operations was not passed.
 var ErrTest = errors.New("TEST")
@@ -88,6 +90,7 @@ func Add(doc *JSON, tokens JSONPointer, value JSON) error {
 // be mutated, you need to clone them using `Copy` manually.
 func Replace(doc *JSON, tokens JSONPointer, value JSON) error {
 	if tokens.IsRoot() {
+		*doc = value
 		return nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
@@ -146,6 +149,11 @@ func Remove(doc *JSON, tokens JSONPointer) (JSON, error) {
 		}
 		value := container[index]
 		container = append(container[:index], container[index+1:]...)
+		doc2, err := putKey(*doc, parentTokens, container)
+		if err != nil {
+			return nil, err
+		}
+		*doc = doc2
 		return value, nil
 	}
 	return nil, nil
@@ -171,7 +179,7 @@ func JSONPatchCopy(doc *JSON, from JSONPointer, to JSONPointer) error {
 
 // JSONPatchTest executes JSON Patch "test" operation.
 func JSONPatchTest(doc *JSON, path JSONPointer, value JSON) error {
-	target, err := path.Find(doc)
+	target, err := path.Get(*doc)
 	if err != nil {
 		return err
 	}

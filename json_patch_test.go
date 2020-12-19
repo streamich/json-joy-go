@@ -191,3 +191,42 @@ func Test_JsonPatch_ApplyOps_AppliesCopyOperation(t *testing.T) {
 	assert.Equal(t, "bar", m["foo"])
 	assert.Equal(t, "bar", m["baz"])
 }
+
+func Test_JsonPatch_ApplyOps_TwoTestOperations(t *testing.T) {
+	b1 := []byte(`{
+		"baz": "qux",
+	  	"foo": ["a", 2, "c"]
+	}`)
+	b2 := []byte(`[
+		{"op": "test", "path": "/baz", "value": "qux"},
+	  	{"op": "test", "path": "/foo/1", value: 2}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	m := doc.(map[string]interface{})
+	assert.Nil(t, err)
+	assert.Equal(t, "qux", m["baz"])
+	assert.Equal(t, "[a 2 c]", fmt.Sprint(m["foo"]))
+}
+
+func Test_JsonPatch_ApplyOps_TestOperation(t *testing.T) {
+	b1 := []byte(`{
+		"foo": "bar"
+	}`)
+	b2 := []byte(`[
+		{"op": "test", "path": "/foo", "value": "bar"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	m := doc.(map[string]interface{})
+	assert.Nil(t, err)
+	assert.Equal(t, "bar", m["foo"])
+}
