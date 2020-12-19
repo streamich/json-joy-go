@@ -3,10 +3,58 @@ package jsonjoy
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var b1 = []byte(`{
+	"foo": {
+	    "bar": 123
+	},
+	"arr": [
+	    1,
+	    {}
+	]
+    }`)
+var b2 = []byte(`[
+	{
+	    "op": "add",
+	    "path": "/foo/baz",
+	    "value": 666
+	},
+	{
+	    "op": "add",
+	    "path": "/foo/bx",
+	    "value": 666
+	},
+	{
+	    "op": "add",
+	    "path": "/asdf",
+	    "value": "asdfadf asdf"
+	},
+	{
+	    "op": "move",
+	    "path": "/arr/0",
+	    "from": "/arr/1"
+	},
+	{
+	    "op": "replace",
+	    "path": "/foo/baz",
+	    "value": "lorem ipsum"
+	}
+    ]`)
+var doc interface{}
+var patch interface{}
+
+func TestMain(m *testing.M) {
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 func Test_JsonPatch_insert_CanInsertIntoMiddleOfSlice(t *testing.T) {
 	b := []byte(`[1, 2]`)
@@ -272,4 +320,11 @@ func Test_JsonPatch_ApplyOps_CanInsertTextIntoTextCell(t *testing.T) {
 	err := ApplyOps(&doc, ops)
 	assert.Nil(t, err)
 	assert.Equal(t, "map[a:_asdf]", fmt.Sprint(doc))
+}
+
+func Benchmark_JsonPatch_ApplyOps_1(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		ops, _, _ := CreateOps(patch)
+		ApplyOps(&doc, ops)
+	}
 }

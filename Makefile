@@ -16,6 +16,10 @@ build/json-patch: clean
 test:
 	go test -v ./...
 
+.PHONY: benchmark
+benchmark:
+	go test -v -run=XXX -bench=.
+
 test_pointer: build/json-pointer
 	npx -p json-joy@2.4.0 json-pointer-test ./build/json-pointer
 
