@@ -23,6 +23,9 @@ var ErrNotFound = errors.New("NOT_FOUND")
 // ErrInvalidIndex is returned when JSON Pointer array index is not valid.
 var ErrInvalidIndex = errors.New("INVALID_INDEX")
 
+// ErrNotAString is returned when location is expected to be a string but is of different type.
+var ErrNotAString = errors.New("NOT_A_STRING")
+
 // UnescapeReferenceToken decodes a single JSON Pointer reference token.
 func UnescapeReferenceToken(token string) string {
 	token = strings.Replace(token, tokenSeparatorEncoded, tokenSeparator, -1)

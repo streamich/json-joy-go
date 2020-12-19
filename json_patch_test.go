@@ -256,3 +256,20 @@ func Test_JsonPatch_ApplyOps_NotFoundPath(t *testing.T) {
 	err := ApplyOps(&doc, ops)
 	assert.Equal(t, "NOT_FOUND", fmt.Sprint(err))
 }
+
+func Test_JsonPatch_ApplyOps_CanInsertTextIntoTextCell(t *testing.T) {
+	b1 := []byte(`{
+		"a": "asdf"
+	}`)
+	b2 := []byte(`[
+		{"op": "str_ins", "path": "/a", "pos": 0, "str": "_"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Nil(t, err)
+	assert.Equal(t, "map[a:_asdf]", fmt.Sprint(doc))
+}
