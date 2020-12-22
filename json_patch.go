@@ -197,14 +197,17 @@ func insertString(src string, pos int, ins string) string {
 	return src[:pos] + ins + src[pos:]
 }
 
-// JSONPatchStrIns insert string into an existing string.
-func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
+func jsonPatchStrOp(doc *JSON, tokens JSONPointer, fn func(str *string) (string, error)) error {
 	if tokens.IsRoot() {
 		str, ok := (*doc).(string)
 		if !ok {
 			return ErrNotAString
 		}
-		*doc = insertString(str, pos, ins)
+		res, err := fn(&str)
+		if err != nil {
+			return err
+		}
+		*doc = res
 		return nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
@@ -217,18 +220,23 @@ func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
 	case map[string]JSON:
 		value, ok := container[key]
 		if !ok {
-			if pos == 0 {
-				container[key] = ""
-				value = ""
-			} else {
-				return errors.New("POS")
+			res, err := fn(nil)
+			if err != nil {
+				return err
 			}
+			container[key] = res
+		} else {
+
+			str, ok := value.(string)
+			if !ok {
+				return ErrNotAString
+			}
+			res, err := fn(&str)
+			if err != nil {
+				return err
+			}
+			container[key] = res
 		}
-		str, ok := value.(string)
-		if !ok {
-			return ErrNotAString
-		}
-		container[key] = insertString(str, pos, ins)
 	case []JSON:
 		index, err := ParseTokenAsArrayIndex(key, -1)
 		if err != nil {
@@ -242,9 +250,48 @@ func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
 		if !ok {
 			return ErrNotAString
 		}
-		container[index] = insertString(str, pos, ins)
+		res, err := fn(&str)
+		if err != nil {
+			return err
+		}
+		container[index] = res
 	}
 	return nil
+}
+
+// JSONPatchStrIns insert string into an existing string.
+func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
+	return jsonPatchStrOp(doc, tokens, func(str *string) (string, error) {
+		if str == nil {
+			if pos == 0 {
+				return ins, nil
+			}
+			return "", errors.New("POS")
+		}
+		return insertString(*str, pos, ins), nil
+	})
+}
+
+func deleteString(src string, pos int, length int) string {
+	strLength := len(src)
+	if pos >= strLength {
+		return src
+	}
+	start := src[:pos]
+	if pos+length >= strLength {
+		return start
+	}
+	return start + src[pos+length:]
+}
+
+// JSONPatchStrDel deletes string from an existing string.
+func JSONPatchStrDel(doc *JSON, tokens JSONPointer, pos int, deletionLength int) error {
+	return jsonPatchStrOp(doc, tokens, func(str *string) (string, error) {
+		if str == nil {
+			return "", ErrNotFound
+		}
+		return deleteString(*str, pos, deletionLength), nil
+	})
 }
 
 // ApplyOperation applies a single operation.
@@ -261,6 +308,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpCopy:
 		return op.apply(doc)
 	case *OpStrIns:
+		return op.apply(doc)
+	case *OpStrDel:
 		return op.apply(doc)
 	case *OpTest:
 		err := op.apply(doc)
@@ -313,5 +362,10 @@ func (op *OpTest) apply(doc *JSON) error {
 
 func (op *OpStrIns) apply(doc *JSON) error {
 	err := JSONPatchStrIns(doc, op.path, op.pos, op.str)
+	return err
+}
+
+func (op *OpStrDel) apply(doc *JSON) error {
+	err := JSONPatchStrDel(doc, op.path, op.pos, op.len)
 	return err
 }
