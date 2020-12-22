@@ -294,6 +294,62 @@ func JSONPatchStrDel(doc *JSON, tokens JSONPointer, pos int, deletionLength int)
 	})
 }
 
+func flip(value interface{}) bool {
+	if value == nil {
+		return true
+	}
+	switch val := value.(type) {
+	case string:
+		if len(val) > 0 {
+			return false
+		}
+		return false
+
+	case float64:
+		if val == 0.0 {
+			return true
+		}
+		return false
+	case bool:
+		return !val
+
+	}
+	return false
+}
+
+// JSONPatchFlip flips a cell treating it as a boolean.
+func jsonPatchFlip(doc *JSON, tokens JSONPointer) error {
+	if tokens.IsRoot() {
+		*doc = flip(*doc)
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
+	case map[string]JSON:
+		val, ok := container[key]
+		if !ok {
+			return ErrNotFound
+		}
+		container[key] = flip(val)
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		if err != nil {
+			return err
+		}
+		if index >= len(container) {
+			return ErrNotFound
+		}
+		container[index] = flip(container[index])
+	}
+	return nil
+}
+
 // ApplyOperation applies a single operation.
 func ApplyOperation(doc *JSON, operation interface{}) error {
 	switch op := operation.(type) {
@@ -310,6 +366,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpStrIns:
 		return op.apply(doc)
 	case *OpStrDel:
+		return op.apply(doc)
+	case *OpFlip:
 		return op.apply(doc)
 	case *OpTest:
 		err := op.apply(doc)
@@ -367,5 +425,10 @@ func (op *OpStrIns) apply(doc *JSON) error {
 
 func (op *OpStrDel) apply(doc *JSON) error {
 	err := JSONPatchStrDel(doc, op.path, op.pos, op.len)
+	return err
+}
+
+func (op *OpFlip) apply(doc *JSON) error {
+	err := jsonPatchFlip(doc, op.path)
 	return err
 }
