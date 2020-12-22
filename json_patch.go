@@ -2,6 +2,7 @@ package jsonjoy
 
 import (
 	"errors"
+	"strconv"
 )
 
 // ErrTest is returned when JSON Patch "error" operations was not passed.
@@ -197,14 +198,17 @@ func insertString(src string, pos int, ins string) string {
 	return src[:pos] + ins + src[pos:]
 }
 
-// JSONPatchStrIns insert string into an existing string.
-func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
+func jsonPatchStrOp(doc *JSON, tokens JSONPointer, fn func(str *string) (string, error)) error {
 	if tokens.IsRoot() {
 		str, ok := (*doc).(string)
 		if !ok {
 			return ErrNotAString
 		}
-		*doc = insertString(str, pos, ins)
+		res, err := fn(&str)
+		if err != nil {
+			return err
+		}
+		*doc = res
 		return nil
 	}
 	parentTokens := tokens[:len(tokens)-1]
@@ -217,18 +221,23 @@ func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
 	case map[string]JSON:
 		value, ok := container[key]
 		if !ok {
-			if pos == 0 {
-				container[key] = ""
-				value = ""
-			} else {
-				return errors.New("POS")
+			res, err := fn(nil)
+			if err != nil {
+				return err
 			}
+			container[key] = res
+		} else {
+
+			str, ok := value.(string)
+			if !ok {
+				return ErrNotAString
+			}
+			res, err := fn(&str)
+			if err != nil {
+				return err
+			}
+			container[key] = res
 		}
-		str, ok := value.(string)
-		if !ok {
-			return ErrNotAString
-		}
-		container[key] = insertString(str, pos, ins)
 	case []JSON:
 		index, err := ParseTokenAsArrayIndex(key, -1)
 		if err != nil {
@@ -242,7 +251,102 @@ func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
 		if !ok {
 			return ErrNotAString
 		}
-		container[index] = insertString(str, pos, ins)
+		res, err := fn(&str)
+		if err != nil {
+			return err
+		}
+		container[index] = res
+	}
+	return nil
+}
+
+// JSONPatchStrIns insert string into an existing string.
+func JSONPatchStrIns(doc *JSON, tokens JSONPointer, pos int, ins string) error {
+	return jsonPatchStrOp(doc, tokens, func(str *string) (string, error) {
+		if str == nil {
+			if pos == 0 {
+				return ins, nil
+			}
+			return "", errors.New("POS")
+		}
+		return insertString(*str, pos, ins), nil
+	})
+}
+
+func deleteString(src string, pos int, length int) string {
+	strLength := len(src)
+	if pos >= strLength {
+		return src
+	}
+	start := src[:pos]
+	if pos+length >= strLength {
+		return start
+	}
+	return start + src[pos+length:]
+}
+
+// JSONPatchStrDel deletes string from an existing string.
+func JSONPatchStrDel(doc *JSON, tokens JSONPointer, pos int, deletionLength int) error {
+	return jsonPatchStrOp(doc, tokens, func(str *string) (string, error) {
+		if str == nil {
+			return "", ErrNotFound
+		}
+		return deleteString(*str, pos, deletionLength), nil
+	})
+}
+
+func flip(value interface{}) bool {
+	if value == nil {
+		return true
+	}
+	switch val := value.(type) {
+	case string:
+		if len(val) > 0 {
+			return false
+		}
+		return false
+
+	case float64:
+		if val == 0.0 {
+			return true
+		}
+		return false
+	case bool:
+		return !val
+
+	}
+	return false
+}
+
+// JSONPatchFlip flips a cell treating it as a boolean.
+func jsonPatchFlip(doc *JSON, tokens JSONPointer) error {
+	if tokens.IsRoot() {
+		*doc = flip(*doc)
+		return nil
+	}
+	parentTokens := tokens[:len(tokens)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := tokens[len(tokens)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
+	case map[string]JSON:
+		val, ok := container[key]
+		if !ok {
+			return ErrNotFound
+		}
+		container[key] = flip(val)
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		if err != nil {
+			return err
+		}
+		if index >= len(container) {
+			return ErrNotFound
+		}
+		container[index] = flip(container[index])
 	}
 	return nil
 }
@@ -261,6 +365,12 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 	case *OpCopy:
 		return op.apply(doc)
 	case *OpStrIns:
+		return op.apply(doc)
+	case *OpStrDel:
+		return op.apply(doc)
+	case *OpFlip:
+		return op.apply(doc)
+	case *OpInc:
 		return op.apply(doc)
 	case *OpTest:
 		err := op.apply(doc)
@@ -314,4 +424,67 @@ func (op *OpTest) apply(doc *JSON) error {
 func (op *OpStrIns) apply(doc *JSON) error {
 	err := JSONPatchStrIns(doc, op.path, op.pos, op.str)
 	return err
+}
+
+func (op *OpStrDel) apply(doc *JSON) error {
+	err := JSONPatchStrDel(doc, op.path, op.pos, op.len)
+	return err
+}
+
+func (op *OpFlip) apply(doc *JSON) error {
+	err := jsonPatchFlip(doc, op.path)
+	return err
+}
+
+func castToFloat64(val interface{}) float64 {
+	if val == nil {
+		return 0
+	}
+	switch f := val.(type) {
+	case float64:
+		return f
+	case bool:
+		if f {
+			return 1
+		}
+		return 0
+	case string:
+		if res, err := strconv.ParseFloat(f, 64); err == nil {
+			return res
+		}
+		return 0
+	}
+	return 1
+}
+
+func (op *OpInc) apply(doc *JSON) error {
+	if op.path.IsRoot() {
+		*doc = castToFloat64(*doc) + op.inc
+		return nil
+	}
+	parentTokens := op.path[:len(op.path)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := op.path[len(op.path)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
+	case map[string]JSON:
+		val, ok := container[key]
+		if !ok {
+			return ErrNotFound
+		}
+		container[key] = castToFloat64(val) + op.inc
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		if err != nil {
+			return err
+		}
+		if index >= len(container) {
+			return ErrNotFound
+		}
+		container[index] = castToFloat64(container[index]) + op.inc
+	}
+	return nil
 }

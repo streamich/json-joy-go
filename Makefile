@@ -21,7 +21,7 @@ benchmark:
 	go test -v -run=XXX -bench=.
 
 test_pointer: build/json-pointer
-	npx -p json-joy@2.4.0 json-pointer-test ./build/json-pointer
+	npx -p json-joy@2.5.1 json-pointer-test ./build/json-pointer
 
 test_patch: build/json-patch
-	npx -p json-joy@2.4.0 json-patch-test ./build/json-patch
+	npx -p json-joy@2.5.1 json-patch-test ./build/json-patch

@@ -324,6 +324,40 @@ func Test_JsonPatch_ApplyOps_CanInsertTextIntoTextCell(t *testing.T) {
 	assert.Equal(t, "map[a:_asdf]", fmt.Sprint(doc))
 }
 
+func Test_JsonPatch_ApplyOps_Flip_CanFlipAValue(t *testing.T) {
+	b1 := []byte(`{
+		"a": 123
+	}`)
+	b2 := []byte(`[
+		{"op": "flip", "path": "/a"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Nil(t, err)
+	assert.Equal(t, "map[a:false]", fmt.Sprint(doc))
+}
+
+func Test_JsonPatch_ApplyOps_Flip_CanFlipAnObjectInAnArray(t *testing.T) {
+	b1 := []byte(`{
+		"b": [1, {}]
+	}`)
+	b2 := []byte(`[
+		{"op": "flip", "path": "/b/1"}
+	]`)
+	var doc interface{}
+	var patch interface{}
+	json.Unmarshal(b1, &doc)
+	json.Unmarshal(b2, &patch)
+	ops, _, _ := CreateOps(patch)
+	err := ApplyOps(&doc, ops)
+	assert.Nil(t, err)
+	assert.Equal(t, "map[b:[1 false]]", fmt.Sprint(doc))
+}
+
 func Benchmark_JsonPatch_ApplyOps_1(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		ops, _, _ := CreateOps(patch)

@@ -54,6 +54,28 @@ type OpStrIns struct {
 	str       string
 }
 
+// OpStrDel JSON Patch+ "str_del" operation.
+type OpStrDel struct {
+	operation *map[string]JSON
+	path      JSONPointer
+	pos       int
+	len       int
+	str       string
+}
+
+// OpFlip JSON Patch+ "flip" operation.
+type OpFlip struct {
+	operation *map[string]JSON
+	path      JSONPointer
+}
+
+// OpInc JSON Patch+ "inc" operation.
+type OpInc struct {
+	operation *map[string]JSON
+	path      JSONPointer
+	inc       float64
+}
+
 // ErrPatchInvalid returned when JSON Patch is invalid.
 var ErrPatchInvalid = errors.New("PATCH_INVALID")
 
@@ -118,6 +140,12 @@ func CreateOp(operation JSON) (interface{}, error) {
 		return createTestOp(obj)
 	case "str_ins":
 		return createStrInsOp(obj)
+	case "str_del":
+		return createStrDelOp(obj)
+	case "flip":
+		return createFlipOp(obj)
+	case "inc":
+		return createIncOp(obj)
 	default:
 		return nil, ErrOperationUnknown
 	}
@@ -128,6 +156,22 @@ var ErrOperationInvalidPath = errors.New("OP_PATH_INVALID")
 
 // ErrOperationMissingValue returned when operation is missing "value" field.
 var ErrOperationMissingValue = errors.New("OP_VALUE_MISSING")
+
+func getPath(operation map[string]JSON) (JSONPointer, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	pointer, err := NewJSONPointer(path)
+	if err != nil {
+		return nil, err
+	}
+	return pointer, nil
+}
 
 func createAddOp(operation map[string]JSON) (*OpAdd, error) {
 	pathInterface, ok := operation["path"]
@@ -301,5 +345,83 @@ func createStrInsOp(operation map[string]JSON) (*OpStrIns, error) {
 		return nil, ErrOperationInvalid
 	}
 	op := OpStrIns{operation: &operation, path: path, pos: pos, str: str}
+	return &op, nil
+}
+
+func createStrDelOp(operation map[string]JSON) (*OpStrDel, error) {
+	pathInterface, ok := operation["path"]
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	pathString, ok := pathInterface.(string)
+	if !ok {
+		return nil, ErrOperationInvalidPath
+	}
+	path, err := NewJSONPointer(pathString)
+	if err != nil {
+		return nil, err
+	}
+	posInterface, ok := operation["pos"]
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	posFloat, ok := posInterface.(float64)
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	pos := int(posFloat)
+	var str string = ""
+	var deletionLength int = -1
+	if lenInterface, ok := operation["len"]; ok {
+		lenFloat, ok := lenInterface.(float64)
+		if !ok {
+			return nil, ErrOperationInvalid
+		}
+		deletionLength = int(lenFloat)
+		if deletionLength < 0 {
+			return nil, ErrOperationInvalid
+		}
+		if _, ok := operation["str"]; ok {
+			return nil, ErrOperationInvalid
+		}
+	}
+	if strInterface, ok := operation["str"]; ok {
+		strValue, ok := strInterface.(string)
+		if !ok {
+			return nil, ErrOperationInvalid
+		}
+		str = strValue
+		deletionLength = len(str)
+	}
+	if deletionLength < 0 {
+		return nil, ErrOperationInvalid
+	}
+	op := OpStrDel{operation: &operation, path: path, pos: pos, len: deletionLength}
+	return &op, nil
+}
+
+func createFlipOp(operation map[string]JSON) (*OpFlip, error) {
+	path, err := getPath(operation)
+	if err != nil {
+		return nil, err
+	}
+	op := OpFlip{operation: &operation, path: path}
+	return &op, nil
+}
+
+func createIncOp(operation map[string]JSON) (*OpInc, error) {
+	path, err := getPath(operation)
+	if err != nil {
+		return nil, err
+	}
+	incInterface, ok := operation["inc"]
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	inc, ok := incInterface.(float64)
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	op := OpInc{operation: &operation, path: path, inc: inc}
 	return &op, nil
 }
