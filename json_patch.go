@@ -2,6 +2,7 @@ package jsonjoy
 
 import (
 	"errors"
+	"strconv"
 )
 
 // ErrTest is returned when JSON Patch "error" operations was not passed.
@@ -369,6 +370,8 @@ func ApplyOperation(doc *JSON, operation interface{}) error {
 		return op.apply(doc)
 	case *OpFlip:
 		return op.apply(doc)
+	case *OpInc:
+		return op.apply(doc)
 	case *OpTest:
 		err := op.apply(doc)
 		if err != nil {
@@ -431,4 +434,57 @@ func (op *OpStrDel) apply(doc *JSON) error {
 func (op *OpFlip) apply(doc *JSON) error {
 	err := jsonPatchFlip(doc, op.path)
 	return err
+}
+
+func castToFloat64(val interface{}) float64 {
+	if val == nil {
+		return 0
+	}
+	switch f := val.(type) {
+	case float64:
+		return f
+	case bool:
+		if f {
+			return 1
+		}
+		return 0
+	case string:
+		if res, err := strconv.ParseFloat(f, 64); err == nil {
+			return res
+		}
+		return 0
+	}
+	return 1
+}
+
+func (op *OpInc) apply(doc *JSON) error {
+	if op.path.IsRoot() {
+		*doc = castToFloat64(*doc) + op.inc
+		return nil
+	}
+	parentTokens := op.path[:len(op.path)-1]
+	obj, err := parentTokens.Find(doc)
+	if err != nil {
+		return err
+	}
+	key := op.path[len(op.path)-1]
+	objInterface := *obj
+	switch container := objInterface.(type) {
+	case map[string]JSON:
+		val, ok := container[key]
+		if !ok {
+			return ErrNotFound
+		}
+		container[key] = castToFloat64(val) + op.inc
+	case []JSON:
+		index, err := ParseTokenAsArrayIndex(key, len(container)-1)
+		if err != nil {
+			return err
+		}
+		if index >= len(container) {
+			return ErrNotFound
+		}
+		container[index] = castToFloat64(container[index]) + op.inc
+	}
+	return nil
 }

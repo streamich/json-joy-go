@@ -69,6 +69,13 @@ type OpFlip struct {
 	path      JSONPointer
 }
 
+// OpInc JSON Patch+ "inc" operation.
+type OpInc struct {
+	operation *map[string]JSON
+	path      JSONPointer
+	inc       float64
+}
+
 // ErrPatchInvalid returned when JSON Patch is invalid.
 var ErrPatchInvalid = errors.New("PATCH_INVALID")
 
@@ -137,6 +144,8 @@ func CreateOp(operation JSON) (interface{}, error) {
 		return createStrDelOp(obj)
 	case "flip":
 		return createFlipOp(obj)
+	case "inc":
+		return createIncOp(obj)
 	default:
 		return nil, ErrOperationUnknown
 	}
@@ -397,5 +406,22 @@ func createFlipOp(operation map[string]JSON) (*OpFlip, error) {
 		return nil, err
 	}
 	op := OpFlip{operation: &operation, path: path}
+	return &op, nil
+}
+
+func createIncOp(operation map[string]JSON) (*OpInc, error) {
+	path, err := getPath(operation)
+	if err != nil {
+		return nil, err
+	}
+	incInterface, ok := operation["inc"]
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	inc, ok := incInterface.(float64)
+	if !ok {
+		return nil, ErrOperationInvalid
+	}
+	op := OpInc{operation: &operation, path: path, inc: inc}
 	return &op, nil
 }
